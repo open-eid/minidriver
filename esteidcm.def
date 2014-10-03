@@ -1,0 +1,50 @@
+﻿LIBRARY	"esteidcm"
+
+EXPORTS
+
+	CardAcquireContext	@1
+	CardDeleteContext	@2
+	CardQueryCapabilities	@3
+	CardDeleteContainer	@4
+	CardCreateContainer	@5
+	CardGetContainerInfo	@6
+	CardAuthenticatePin	@7
+	CardGetChallenge	@8
+	CardAuthenticateChallenge	@9
+	CardUnblockPin	@10
+	CardChangeAuthenticator	@11
+	CardDeauthenticate	@12
+	CardCreateDirectory	@13
+	CardDeleteDirectory	@14
+	CardCreateFile	@15
+	CardReadFile	@16
+	CardWriteFile	@17
+	CardDeleteFile	@18
+	CardEnumFiles	@19
+	CardGetFileInfo	@20
+	CardQueryFreeSpace	@21
+	CardQueryKeySizes	@22
+	CardSignData	@23
+	CardRSADecrypt	@24
+	CardConstructDHAgreement	@25
+	CardGetSharedKeyHandle	@26
+	CardDestroyKey	@27
+	CardGetAlgorithmProperty	@28
+	CardGetKeyProperty	@29
+	CardSetKeyProperty	@30
+	CardProcessEncryptedData	@31
+	CardImportSessionKey	@32
+	MDEncryptData	@33
+	MDImportSessionKey @34
+	CardAuthenticateEx	@35
+	CardGetChallengeEx	@36
+	CardDeauthenticateEx	@37
+	CardChangeAuthenticatorEx	@38
+	CardGetContainerProperty	@39
+	CardSetContainerProperty	@40
+	CardGetProperty	@41
+	CardSetProperty	@42
+	CardCreateContainerEx	@43
+	CardDeriveKey	@44
+	CardDestroyDHAgreement	@45
+		

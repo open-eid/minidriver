@@ -1,0 +1,108 @@
+<CMCKConfig>
+    
+  <Version>2</Version>
+    
+  <CardDefaults>
+    <DefaultPins>
+        <PinEntry>
+            <RoleID>1</RoleID> <!-- authentication/ROLE_USER -->
+            <Type>AlphaNumericPinType</Type> 
+            <Value>0x37 0x37 0x33 0x36</Value>
+            <Blocking>True</Blocking>
+            <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+            <RoleID>2</RoleID>   <!-- PUK-ADMIN/ROLE_ADMIN -->
+            <Type>EmptyPinType</Type>
+            <Value>0x33 0x30 0x37 0x30 0x37 0x33 0x31 0x32</Value>
+            <Blocking>True</Blocking>
+            <AllowZeroLength>True</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+            <RoleID>3</RoleID>  <!-- signature -->
+            <Type>AlphaNumericPinType</Type>
+            <Value>0x39 0x32 0x34 0x36 0x38</Value>
+            <Blocking>True</Blocking>
+            <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+            <RoleID>4</RoleID>
+            <Type>EmptyPinType</Type>
+            <Value></Value>
+            <Blocking>True</Blocking>
+            <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+            <RoleID>5</RoleID>
+            <Type>EmptyPinType</Type>
+            <Value></Value>
+            <Blocking>True</Blocking>
+            <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+            <RoleID>6</RoleID>
+            <Type>EmptyPinType</Type>
+            <Value></Value>
+            <Blocking>True</Blocking>
+            <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+            <RoleID>6</RoleID>
+            <Type>EmptyPinType</Type>
+            <Value></Value>
+            <Blocking>True</Blocking>
+            <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+    </DefaultPins>
+
+    <CardSupports>
+        <MinimumVersion>6</MinimumVersion>
+        <CurrentVersion>6</CurrentVersion>
+        <LoadingUnderCAPI>True</LoadingUnderCAPI>
+        <LoadingUnderCNG>True</LoadingUnderCNG>
+        <KeyImport>True</KeyImport>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE</KeyTypes>
+        <OnCardPadding>False</OnCardPadding>
+        <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
+        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1</SignHashAlgorithms>
+        <SignHashFlags></SignHashFlags>
+        <SignReturnBufferSize>True</SignReturnBufferSize>        
+        <KDFTypes>HASH</KDFTypes>
+        <KDFHashAlgorithms>SHA1</KDFHashAlgorithms>
+        <KDFHMACflag>False</KDFHMACflag>
+        <SupportsCardGetChallenge>False</SupportsCardGetChallenge>
+        <SupportsCardAuthenticateChallenge>False</SupportsCardAuthenticateChallenge>
+        <SupportsCardGetChallengeEx>False</SupportsCardGetChallengeEx>
+        <SupportsCardUnblockPin>False</SupportsCardUnblockPin>
+        <SupportsCardChangeAuthenticator>False</SupportsCardChangeAuthenticator>
+        <SupportsCardChangeAuthenticatorEx>False</SupportsCardChangeAuthenticatorEx>
+        <SupportsCardConstructDHAgreement>False</SupportsCardConstructDHAgreement>
+        <SupportsCardDestroyDHAgreement>False</SupportsCardDestroyDHAgreement>
+    </CardSupports>
+  </CardDefaults>
+
+  <TestSuiteDefaults>
+      <Logging>
+          <LogFile>CMCK_log.xml</LogFile>
+          <LogToConsole>True</LogToConsole>
+      </Logging>
+
+      <TestParams>
+          <TestParam>
+              <Test>MultiThreaded</Test>
+              <Name>t</Name>
+              <Value>5</Value>
+          </TestParam>
+          <TestParam>
+              <Test>MultiThreaded</Test>
+              <Name>n</Name>
+              <Value>5</Value>
+          </TestParam>
+          <TestParam>
+              <Test>NonRepeatingChallenge</Test>
+              <Name>n</Name>
+              <Value>300</Value>
+          </TestParam>
+      </TestParams>
+  </TestSuiteDefaults>
+</CMCKConfig>
