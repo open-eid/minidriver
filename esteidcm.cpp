@@ -1232,7 +1232,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 			try
 			{
 				PinString tmp = PinString("");
-				
 				if(estEIDManager.isSecureConnection() == true)
 				{
 					SCardLog::writeLog("[%s:%d][MD] CardAuthenticateEx: Using secure connection to card",__FUNCTION__, __LINE__);
@@ -1288,14 +1287,37 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 							remaining = 0x03;
 							authenticated = true;
 						}
-						catch(AuthError)
+						catch(AuthError &ae)
 						{
-							SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
-							MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-							remaining--;
+							if(ae.m_aborted == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PIN input aborted",__FUNCTION__, __LINE__, 3-remaining);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return ret(E_CANCELLED_BY_USER);
+							}
+							else if(ae.m_blocked == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PIN1 blocked",__FUNCTION__, __LINE__, remaining);
+								MessageBox(cp, L"PIN1 blocked.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return ret(E_PINBLOCKED);
+							}
+							else if(ae.m_badinput == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] Unexpected input",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"Unexpected input.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								break;
+							}
+							else
+							{
+								SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								remaining--;
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+							}
 						}
-						TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 					}
+					TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 				}
 				if (PinId == SIGN_PIN_ID)
 				{
@@ -1341,14 +1363,37 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 							remaining = 0x03;
 							authenticated = true;
 						}
-						catch(AuthError)
+						catch(AuthError &ae)
 						{
-							SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
-							MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-							remaining--;
+							if(ae.m_aborted == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PIN input aborted E_CANCELLED_BY_USER",__FUNCTION__, __LINE__, 3-remaining);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return ret(E_CANCELLED_BY_USER);
+							}
+							else if(ae.m_blocked == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PIN2 blocked",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"PIN2 blocked.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return ret(E_PINBLOCKED);
+							}
+							else if(ae.m_badinput == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] Unexpected input",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"Unexpected input.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								break;
+							}
+							else
+							{
+								SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								remaining--;
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+							}
 						}
-						TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 					}
+					TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 				}
 				if(PinId == PUKK_PIN_ID)
 				{
@@ -1394,14 +1439,37 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 							remaining = 0x03;
 							authenticated = true;
 						}
-						catch(AuthError)
+						catch(AuthError &ae)
 						{
-							SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
-							MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-							remaining--;
+							if(ae.m_aborted == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PUK input aborted",__FUNCTION__, __LINE__, 3-remaining);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return ret(E_CANCELLED_BY_USER);
+							}
+							else if(ae.m_blocked == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PUK blocked",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"PUK blocked.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return ret(E_PINBLOCKED);
+							}
+							else if(ae.m_badinput == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] Unexpected input",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"Unexpected input.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								break;
+							}
+							else
+							{
+								SCardLog::writeLog("[%s:%d][MD] Wrong PUK presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
+								MessageBox(cp, L"Wrong PUK presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								remaining--;
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+							}
 						}
-						TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 					}
+					TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 				}
 			}
 			catch (AuthError err)
@@ -2554,36 +2622,41 @@ void GetFileVersionOfApplication()
 #ifdef _WIN64
 	LPTSTR lpszFilePath = L"esteidcm64.dll";
 #else
-   LPTSTR lpszFilePath = L"esteidcm.dll";
+	LPTSTR lpszFilePath = L"esteidcm.dll";
 #endif
 
-   DWORD dwDummy;
-   DWORD dwFVISize = GetFileVersionInfoSize( lpszFilePath , &dwDummy );
+	DWORD dwDummy;
+	DWORD dwFVISize = GetFileVersionInfoSize( lpszFilePath , &dwDummy );
 
-   LPBYTE lpVersionInfo = new BYTE[dwFVISize];
+	LPBYTE lpVersionInfo = new BYTE[dwFVISize];
 
-   GetFileVersionInfo( lpszFilePath , 0 , dwFVISize , lpVersionInfo );
+	GetFileVersionInfo( lpszFilePath , 0 , dwFVISize , lpVersionInfo );
 
-   UINT uLen;
-   VS_FIXEDFILEINFO *lpFfi;
+	UINT uLen;
+	VS_FIXEDFILEINFO *lpFfi;
 
-   VerQueryValue( lpVersionInfo , _T("\\") , (LPVOID *)&lpFfi , &uLen );
+	BOOL ret = VerQueryValue( lpVersionInfo , _T("\\") , (LPVOID *)&lpFfi , &uLen );
 
-   DWORD dwFileVersionMS = lpFfi->dwFileVersionMS;
-   DWORD dwFileVersionLS = lpFfi->dwFileVersionLS;
+	if(ret == 0)
+	{
+		SCardLog::writeLog("[%s:%d][MD] Failed to read driver version.",__FUNCTION__, __LINE__);
+		return;
+	}
 
-   delete [] lpVersionInfo;
+	DWORD dwFileVersionMS = lpFfi->dwFileVersionMS;
+	DWORD dwFileVersionLS = lpFfi->dwFileVersionLS;
 
-   DWORD dwLeftMost     = HIWORD(dwFileVersionMS);
-   DWORD dwSecondLeft   = LOWORD(dwFileVersionMS);
-   DWORD dwSecondRight  = HIWORD(dwFileVersionLS);
-   DWORD dwRightMost    = LOWORD(dwFileVersionLS);
+	delete [] lpVersionInfo;
+
+	DWORD dwLeftMost     = HIWORD(dwFileVersionMS);
+	DWORD dwSecondLeft   = LOWORD(dwFileVersionMS);
+	DWORD dwSecondRight  = HIWORD(dwFileVersionLS);
+	DWORD dwRightMost    = LOWORD(dwFileVersionLS);
 
 	size_t size = wcstombs(NULL, lpszFilePath, 0);
 	char *chFileName = new char[size+1];
 	wcstombs(chFileName, lpszFilePath, size+1);
 
 	SCardLog::writeLog("[%s:%d][MD] Driver version: %s %d.%d.%d.%d",__FUNCTION__, __LINE__, chFileName, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
-   delete chFileName;
-
+	delete chFileName;
 }
