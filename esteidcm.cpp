@@ -1267,6 +1267,13 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 								return SCARD_W_CANCELLED_BY_USER;
 							}
+							else if(ae.m_timeout == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PIN1 input timeout",__FUNCTION__, __LINE__, remaining);
+								MessageBox(cp, L"PIN1 timeout.", L"PIN1 timeout", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return SCARD_W_CANCELLED_BY_USER;
+							}
 							else if(ae.m_blocked == true)
 							{
 								SCardLog::writeLog("[%s:%d][MD] PIN1 blocked",__FUNCTION__, __LINE__, remaining);
@@ -1343,6 +1350,13 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 								return SCARD_W_CANCELLED_BY_USER;
 							}
+							else if(ae.m_timeout == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PIN2 input timeout",__FUNCTION__, __LINE__, remaining);
+								MessageBox(cp, L"PIN2 timeout.", L"PIN2 timeout", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return SCARD_W_CANCELLED_BY_USER;
+							}
 							else if(ae.m_blocked == true)
 							{
 								SCardLog::writeLog("[%s:%d][MD] PIN2 blocked",__FUNCTION__, __LINE__, 3-remaining);
@@ -1416,6 +1430,13 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 							if(ae.m_aborted == true)
 							{
 								SCardLog::writeLog("[%s:%d][MD] PUK input aborted",__FUNCTION__, __LINE__, 3-remaining);
+								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
+								return SCARD_W_CANCELLED_BY_USER;
+							}
+							else if(ae.m_timeout == true)
+							{
+								SCardLog::writeLog("[%s:%d][MD] PUK input timeout",__FUNCTION__, __LINE__, remaining);
+								MessageBox(cp, L"PUK timeout.", L"PUK timeout", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 								return SCARD_W_CANCELLED_BY_USER;
 							}
