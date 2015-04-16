@@ -1196,6 +1196,9 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 		}
 		BYTE remaining = 0,dummy = 0xFA;
 		byte puk = 0,pinAuth = 0,pinSign = 0;
+		const int BUFFER_SIZE = 512;
+		int lReturn = 0;
+		WCHAR wcBuffer[BUFFER_SIZE];
 
 			EXTERNAL_INFO externalInfo;
 			externalInfo.hwndParentWindow = cp;
@@ -1217,9 +1220,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 
 				if (PinId == AUTH_PIN_ID)
 				{
-					const int BUFFER_SIZE = 512;
-					int lReturn = 0;
-					WCHAR wcBuffer[BUFFER_SIZE];
 					lReturn = GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SENGLANGUAGE, wcBuffer, BUFFER_SIZE);
 					remaining = pinAuth;
 					if(std::wstring(wcBuffer) == std::wstring(L"Russian"))
@@ -1289,9 +1289,10 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 							}
 							else
 							{
-								SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
-								MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 								remaining--;
+								wsprintf(wcBuffer, L"A wrong PIN was presented to the card: %i  retries left.", remaining);
+								SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, remaining);
+								MessageBox(cp, wcBuffer, L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 							}
 						}
@@ -1300,9 +1301,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 				}
 				if (PinId == SIGN_PIN_ID)
 				{
-					const int BUFFER_SIZE = 512;
-					int lReturn = 0;
-					WCHAR wcBuffer[BUFFER_SIZE];
 					lReturn = GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SENGLANGUAGE, wcBuffer, BUFFER_SIZE);
 					remaining = pinSign;
 					if(std::wstring(wcBuffer) == std::wstring(L"Russian"))
@@ -1372,9 +1370,10 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 							}
 							else
 							{
-								SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
-								MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 								remaining--;
+								wsprintf(wcBuffer, L"A wrong PIN was presented to the card: %i  retries left.", remaining);
+								SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, remaining);
+								MessageBox(cp, wcBuffer, L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 							}
 						}
@@ -1383,9 +1382,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 				}
 				if(PinId == PUKK_PIN_ID)
 				{
-					const int BUFFER_SIZE = 512;
-					int lReturn = 0;
-					WCHAR wcBuffer[BUFFER_SIZE];
 					lReturn = GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SENGLANGUAGE, wcBuffer, BUFFER_SIZE);
 					remaining = puk;
 					if(std::wstring(wcBuffer) == std::wstring(L"Russian"))
@@ -1455,9 +1451,10 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 							}
 							else
 							{
-								SCardLog::writeLog("[%s:%d][MD] Wrong PUK presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
-								MessageBox(cp, L"Wrong PUK presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 								remaining--;
+								wsprintf(wcBuffer, L"A wrong PIN was presented to the card: %i  retries left.", remaining);
+								SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, remaining);
+								MessageBox(cp, wcBuffer, L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 								TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
 							}
 						}
