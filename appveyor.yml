@@ -1,0 +1,27 @@
+version: 1.0.{build}
+skip_tags: true
+os: Windows Server 2012 R2
+install:
+  - cmd: git submodule update --init --recursive
+  - ps: Start-FileDownload 'http://slproweb.com/download/Win32OpenSSL-1_0_2a.exe'
+  - ps: Start-FileDownload 'http://slproweb.com/download/Win64OpenSSL-1_0_2a.exe'
+  - ps: Start-FileDownload 'http://download.microsoft.com/download/d/d/9/dd9a82d0-52ef-40db-8dab-795376989c03/vcredist_x86.exe'
+  - ps: Start-FileDownload 'http://download.microsoft.com/download/2/d/6/2d61c766-107b-409d-8fba-c39e61ca08e8/vcredist_x64.exe'
+  - ps: Start-FileDownload 'http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi'
+  - ps: Start-Process "Win32OpenSSL-1_0_2a.exe" -ArgumentList "/silent /verysilent /sp- /suppressmsgboxes" -Wait
+  - ps: Start-Process "Win64OpenSSL-1_0_2a.exe" -ArgumentList "/silent /verysilent /sp- /suppressmsgboxes" -Wait
+  - ps: Start-Process "vcredist_x86.exe" -ArgumentList "/quiet" -Wait
+  - ps: Start-Process "vcredist_x64.exe" -ArgumentList "/quiet" -Wait
+  - ps: Start-Process "cngsdk.msi" -ArgumentList "/quiet" -Wait
+platform:
+  - Win32
+  - x64
+configuration:
+  - RelWithDebInfo
+
+build:
+  project: esteidcm.sln
+  verbosity: normal
+  
+artifacts:
+  - path: $(configuration)\esteidcm\$(PLATFORM)\*.dll
