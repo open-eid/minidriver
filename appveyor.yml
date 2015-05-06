@@ -20,7 +20,7 @@ configuration:
   - RelWithDebInfo
 
 build:
-  project: esteidcm.sln
+  project: esteidcm2013.sln
   verbosity: normal
   
 artifacts:
