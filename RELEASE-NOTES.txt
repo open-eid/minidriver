@@ -5,6 +5,7 @@ Changes compared to ver 3.10
 - Fix PIN blocked error message in case of PINPAD smartcard reader. IB-3836
 - Fix wrong PIN presented error message in case of PINPAD smartcard reader. IB-2152
 - Fix PIN timeout error message in case of PINPAD smartcard reader. IB-3361
+- Fix PIN cancel PINPAD behaviour
 
 Changes compared to ver 3.8
 
