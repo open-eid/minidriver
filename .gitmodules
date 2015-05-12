@@ -1,0 +1,3 @@
+[submodule "smartcardpp"]
+	path = smartcardpp
+	url = ../smartcardpp.git

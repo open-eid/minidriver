@@ -17,7 +17,7 @@ DWORD WINAPI CardDeleteContainer(__in PCARD_DATA pCardData,
 								 __in DWORD dwReserved)
 {
 	SCardLog::writeLog("[%s:%d] CardDeleteContainer:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardCreateDirectory(__in PCARD_DATA pCardData,
@@ -25,14 +25,14 @@ DWORD WINAPI CardCreateDirectory(__in PCARD_DATA pCardData,
 								 __in CARD_DIRECTORY_ACCESS_CONDITION AccessCondition)
 {
 	SCardLog::writeLog("[%s:%d] CardCreateDirectory:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardDeleteDirectory(__in PCARD_DATA pCardData,
 								 __in LPSTR pszDirectoryName)
 {
 	SCardLog::writeLog("[%s:%d] CardDeleteDirectory:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardCreateFile(__in PCARD_DATA pCardData,
@@ -42,7 +42,7 @@ DWORD WINAPI CardCreateFile(__in PCARD_DATA pCardData,
 							__in CARD_FILE_ACCESS_CONDITION AccessCondition)
 {
 	SCardLog::writeLog("[%s:%d] CardCreateFile:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardDeleteFile(__in PCARD_DATA pCardData,
@@ -51,21 +51,21 @@ DWORD WINAPI CardDeleteFile(__in PCARD_DATA pCardData,
 							__in DWORD dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardDeleteFile:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 									  __in PCARD_DH_AGREEMENT_INFO pAgreementInfo)
 {
 	SCardLog::writeLog("[%s:%d] CardConstructDHAgreement:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, 
 						   __in PCARD_DERIVE_KEY pAgreementInfo)
 {
 	SCardLog::writeLog("[%s:%d] CardDeriveKey:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardDestroyDHAgreement(__in PCARD_DATA pCardData,
@@ -73,7 +73,7 @@ DWORD WINAPI CardDestroyDHAgreement(__in PCARD_DATA pCardData,
 									__in DWORD dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardDestroyDHAgreement:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CspGetDHAgreement(__in PCARD_DATA pCardData, 
@@ -82,7 +82,7 @@ DWORD WINAPI CspGetDHAgreement(__in PCARD_DATA pCardData,
 							   __in DWORD dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CspGetDHAgreement:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
@@ -91,7 +91,7 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 									   __out_opt PDWORD pcAttemptsRemaining)
 {
 	SCardLog::writeLog("[%s:%d] CardAuthenticateChallenge:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardGetChallengeEx(__in PCARD_DATA pCardData,
@@ -101,7 +101,7 @@ DWORD WINAPI CardGetChallengeEx(__in PCARD_DATA pCardData,
 								__in DWORD dwFlags )
 {
 	SCardLog::writeLog("[%s:%d] CardGetChallengeEx:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
@@ -109,7 +109,7 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 								__in DWORD dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardDeauthenticate:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
@@ -117,7 +117,7 @@ DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 								  __in DWORD dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardDeauthenticateEx:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardGetSharedKeyHandle(__in PCARD_DATA  pCardData,
@@ -128,14 +128,14 @@ DWORD WINAPI CardGetSharedKeyHandle(__in PCARD_DATA  pCardData,
 									__out PCARD_KEY_HANDLE  phKey)
 {
 	SCardLog::writeLog("[%s:%d] CardGetSharedKeyHandle:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardDestroyKey(__in PCARD_DATA  pCardData,
 							__in CARD_KEY_HANDLE hKey)
 {
 	SCardLog::writeLog("[%s:%d] CardDestroyKey:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardGetAlgorithmProperty(__in PCARD_DATA  pCardData,
@@ -147,7 +147,7 @@ DWORD WINAPI CardGetAlgorithmProperty(__in PCARD_DATA  pCardData,
 									  __in DWORD  dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardGetAlgorithmProperty:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardGetKeyProperty(__in PCARD_DATA pCardData,
@@ -159,7 +159,7 @@ DWORD WINAPI CardGetKeyProperty(__in PCARD_DATA pCardData,
 								__in DWORD  dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardGetKeyProperty:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardSetKeyProperty(__in PCARD_DATA pCardData,
@@ -170,7 +170,7 @@ DWORD WINAPI CardSetKeyProperty(__in PCARD_DATA pCardData,
 								__in DWORD  dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardSetKeyProperty:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardProcessEncryptedData(__in PCARD_DATA  pCardData,
@@ -184,7 +184,7 @@ DWORD WINAPI CardProcessEncryptedData(__in PCARD_DATA  pCardData,
 									  __in DWORD  dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardProcessEncryptedData:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardImportSessionKey(__in PCARD_DATA  pCardData,
@@ -198,7 +198,7 @@ DWORD WINAPI CardImportSessionKey(__in PCARD_DATA  pCardData,
 								  __in DWORD  dwFlags)
 {
 	SCardLog::writeLog("[%s:%d] CardImportSessionKey:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI MDEncryptData(__in PCARD_DATA  pCardData,
@@ -210,7 +210,7 @@ DWORD WINAPI MDEncryptData(__in PCARD_DATA  pCardData,
 						   __out PDWORD  pcEncryptedData)
 {
 	SCardLog::writeLog("[%s:%d] MDEncryptData:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI MDImportSessionKey(__in PCARD_DATA  pCardData,
@@ -221,7 +221,7 @@ DWORD WINAPI MDImportSessionKey(__in PCARD_DATA  pCardData,
 								__in DWORD  cbInput)
 {
 	SCardLog::writeLog("[%s:%d] MDImportSessionKey:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardCreateContainerEx(__in PCARD_DATA  pCardData,
@@ -233,5 +233,5 @@ DWORD WINAPI CardCreateContainerEx(__in PCARD_DATA  pCardData,
 								   __in PIN_ID  PinId)
 {
 	SCardLog::writeLog("[%s:%d] CardCreateContainerEx:dummy",__FUNCTION__, __LINE__);
-	return ret(E_UNSUPPORTED);
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
