@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<?if $(var.Platform) = "x64" ?>
+<?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+<?else?>
+<?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+<?endif?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:difx="http://schemas.microsoft.com/wix/DifxAppExtension">
+  <Product Id="*" Name="EstEID Minidriver" UpgradeCode="346f915b-09d9-4e73-afc3-254d6dc45cc7"
+           Language="1033" Version="$(var.MSI_VERSION)" Manufacturer="RIA">
+    <Package Platform="$(var.Platform)" InstallerVersion="405" Compressed="yes" InstallScope="perMachine"/>
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high"/>
+    <MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize" DowngradeErrorMessage=
+      "A newer version of [ProductName] is already installed. If you are trying to downgrade, please uninstall the newer version first."/>
+    <UIRef Id="WixUI_Minimal"/>
+
+    <Property Id="SCPNPENTRY">
+      <RegistrySearch Id="ScPnP" Root="HKLM" Key="SOFTWARE\Policies\Microsoft\Windows\ScPnP" Name="EnableScPnP" Type="raw"/>
+    </Property>
+    <Property Id="USER32VERSION">
+        <DirectorySearch Id="SystemFolderDriverVersion" Path="[SystemFolder]">
+            <FileSearch Name="user32.dll" MinVersion="10.0.0.0"/>
+        </DirectorySearch>
+    </Property>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+<?if $(var.Platform) = "x64" ?>
+      <!-- installing 64-bit part of ATR records on 64-bit machine -->
+      <Component Id="RemoveMinidriverRegistrationComponentX64" Guid="B0DFF274-B96A-48f1-89F1-400A271770DB" Win64="yes">
+        <?include minidriver_registry_cleanup.wxi?>
+      </Component>
+
+      <Component Id="EnableScPnP64" Guid="484e65f4-fb21-49a0-8d26-54f8773ef7bf">
+        <Condition><![CDATA[SCPNPENTRY = "#0"]]></Condition>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\ScPnP"
+                       Name="EnableScPnP" Action="write" Type="integer" Value="1"/>
+      </Component>
+<?endif ?>
+
+      <Component Id="EnableScPnP32" Guid="4aac3a1c-2103-4e33-bcbf-8c354e7a8883">
+        <Condition><![CDATA[SCPNPENTRY = "#0"]]></Condition>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Policies\Microsoft\Windows\ScPnP"
+                       Name="EnableScPnP" Action="write" Type="integer" Value="1"/>
+      </Component>
+
+      <!-- installing 32-bit part of ATR records on both 64-bit and 32-bit machines -->
+      <Component Id="RemoveMinidriverRegistrationComponentX86" Guid="4EEC213A-7D2C-4062-9EEF-BA18BFEB7F12" Win64="no">
+        <?include minidriver_registry_cleanup.wxi?>
+      </Component>
+
+      <!-- Restart Smart Card service -->
+      <Component Id="SCardSvrStart" Guid="{0AFDDA6E-A145-40B6-8ABD-FE502FD9C31D}" KeyPath="yes">
+        <ServiceControl Id="SCardSvrStart" Name="SCardSvr" Start="install" Stop="both" Wait="no"/>
+      </Component>
+      <Component Id="CertPropSvcStart" Guid="{4BF6CF46-3AC5-4B5A-A698-6B7BB0584800}" KeyPath="yes">
+        <ServiceControl Id="CertPropSvcStart" Name="CertPropSvc" Start="install" Stop="both" Wait="no"/>
+      </Component>
+
+      <Directory Id='$(var.PlatformProgramFilesFolder)'>
+        <Directory Id="APPLICATIONFOLDER" Name="EstEID Minidriver">
+          <Component Id="miniDriverW7" Guid="14397c62-610a-41ee-8168-a70757e71cdc">
+            <Condition><![CDATA[(VersionNT = 601)]]></Condition>
+            <File Id="esteidcmINFW7x86" Source="minidriver\7$(var.Platform)\Package\esteidcm.inf" KeyPath="yes"/>
+            <File Id="esteidcm64CATW7x86" Source="minidriver\7$(var.Platform)\Package\esteidcm64.cat" />
+            <File Id="esteidcmCATW7x86" Source="minidriver\7$(var.Platform)\Package\esteidcm.cat" />
+            <difx:Driver PlugAndPlayPrompt="no" ForceInstall="yes"/>
+          </Component>
+          <Component Id="miniDriverW8" Guid="1dde947d-1341-48ff-888a-f77bb830bc47">
+            <Condition><![CDATA[(VersionNT = 602)]]></Condition>
+            <File Id="esteidcmINFW8x86" Source="minidriver\8$(var.Platform)\Package\esteidcm.inf" KeyPath="yes"/>
+            <File Id="esteidcmCATW8x86" Source="minidriver\8$(var.Platform)\Package\esteidcm.cat" />
+            <File Id="esteidcm64CATW8x86" Source="minidriver\8$(var.Platform)\Package\esteidcm64.cat" />
+            <difx:Driver PlugAndPlayPrompt="no" ForceInstall="yes"/>
+          </Component>
+          <Component Id="miniDriverW8.1" Guid="2518d5aa-abbe-4abf-b2f9-d56cb66b855d">
+            <Condition><![CDATA[(VersionNT = 603 AND NOT USER32VERSION)]]></Condition>
+            <File Id="esteidcmINFW8.1x86" Source="minidriver\8.1$(var.Platform)\Package\esteidcm.inf" KeyPath="yes"/>
+            <File Id="esteidcmCATW8.1x86" Source="minidriver\8.1$(var.Platform)\Package\esteidcm.cat" />
+            <File Id="esteidcm64CATW8.1x86" Source="minidriver\8.1$(var.Platform)\Package\esteidcm64.cat" />
+            <difx:Driver PlugAndPlayPrompt="no" ForceInstall="yes"/>
+          </Component>
+          <Component Id="miniDriverW10" Guid="b862d285-abe9-4f3d-a057-59542496d27a">
+            <Condition><![CDATA[(USER32VERSION)]]></Condition>
+            <File Id="esteidcmINFW10x86" Source="minidriver\10$(var.Platform)\esteidcm.inf" KeyPath="yes"/>
+            <File Id="esteidcmCATW10x86" Source="minidriver\10$(var.Platform)\esteidcm.cat" />
+            <File Id="esteidcm64CATW10x86" Source="minidriver\10$(var.Platform)\esteidcm64.cat" />
+            <difx:Driver PlugAndPlayPrompt="no" ForceInstall="yes"/>
+          </Component>
+
+          <Directory Id="minidriver_x64" Name="x64">
+            <Component Id="miniDriverW7x64Components" Guid="8892d9d5-aaf9-4d2d-a1d7-f0ce4eea4b45">
+              <Condition><![CDATA[(VersionNT = 601)]]></Condition>
+              <File Id="esteidcmW7x64DLL" Source="minidriver\7$(var.Platform)\Package\x64\esteidcm_64.dll" />
+              <File Id="atrfiltrW7x64DLL" Source="minidriver\7$(var.Platform)\Package\x64\atrfiltr_64.sys" />
+            </Component>
+            <Component Id="miniDriverW8x64Components" Guid="a7f5404f-e9c4-4401-98f4-1027b9b85955">
+              <Condition><![CDATA[(VersionNT = 602)]]></Condition>
+              <File Id="esteidcmW8x64DLL" Source="minidriver\8$(var.Platform)\Package\x64\esteidcm_64.dll" />
+              <File Id="atrfiltrW8x64DLL" Source="minidriver\8$(var.Platform)\Package\x64\atrfiltr_64.sys" />
+            </Component>
+            <Component Id="miniDriverW8.1x64Components" Guid="c0796738-8525-40e8-bfb0-ae99e17172ec">
+              <Condition><![CDATA[(VersionNT = 603 AND NOT USER32VERSION)]]></Condition>
+              <File Id="esteidcmW8.1x64DLL" Source="minidriver\8.1$(var.Platform)\Package\x64\esteidcm_64.dll" />
+              <File Id="atrfiltrW8.1x64DLL" Source="minidriver\8.1$(var.Platform)\Package\x64\atrfiltr_64.sys" />
+            </Component>
+            <Component Id="miniDriverW10x64Components" Guid="1afa6d46-7d49-4ae7-a362-e38620bc6f10">
+              <Condition><![CDATA[(USER32VERSION)]]></Condition>
+              <File Id="esteidcmW10x64DLL" Source="minidriver\10$(var.Platform)\x64\esteidcm_64.dll" />
+              <File Id="atrfiltrW10x64DLL" Source="minidriver\10$(var.Platform)\x64\atrfiltr_64.sys" />
+              <File Id="msvcp90W10x64DLL" Source="minidriver\10$(var.Platform)\x64\msvcp90_64.dll" />
+              <File Id="msvcr90W10x64DLL" Source="minidriver\10$(var.Platform)\x64\msvcr90_64.dll" />
+            </Component>
+          </Directory>
+
+          <Directory Id="minidriver_x86" Name="x86">
+            <Component Id="miniDriverW7x86Components" Guid="d358fad6-06e9-45cd-aec8-adcc8acbb11f">
+              <Condition><![CDATA[(VersionNT = 601)]]></Condition>
+              <File Id="esteidcmW7x86DLL" Source="minidriver\7$(var.Platform)\Package\x86\esteidcm_32.dll" />
+              <File Id="atrfiltrW7x86DLL" Source="minidriver\7$(var.Platform)\Package\x86\atrfiltr_32.sys" />
+            </Component>
+            <Component Id="miniDriverW8x86Components" Guid="de0d45d7-f352-4cc7-9d39-3e79c17a6d9d">
+              <Condition><![CDATA[(VersionNT = 602)]]></Condition>
+              <File Id="esteidcmW8x86DLL" Source="minidriver\8$(var.Platform)\Package\x86\esteidcm_32.dll" />
+              <File Id="atrfiltrW8x86DLL" Source="minidriver\8$(var.Platform)\Package\x86\atrfiltr_32.sys" />
+            </Component>
+            <Component Id="miniDriverW8.1x86Components" Guid="b3478d0c-b848-41fc-a3c7-4532253b60f1">
+              <Condition><![CDATA[(VersionNT = 603 AND NOT USER32VERSION)]]></Condition>
+              <File Id="esteidcmW8.1x86DLL" Source="minidriver\8.1$(var.Platform)\Package\x86\esteidcm_32.dll" />
+              <File Id="atrfiltrW8.1x86DLL" Source="minidriver\8.1$(var.Platform)\Package\x86\atrfiltr_32.sys" />
+            </Component>
+            <Component Id="miniDriverW10x86Components" Guid="70ef6f86-532a-4924-a747-35306a3adbdb">
+              <Condition><![CDATA[(USER32VERSION)]]></Condition>
+              <File Id="esteidcmW10x86DLL" Source="minidriver\10$(var.Platform)\x86\esteidcm_32.dll" />
+              <File Id="atrfiltrW10x86DLL" Source="minidriver\10$(var.Platform)\x86\atrfiltr_32.sys" />
+              <File Id="msvcp90W10x86DLL" Source="minidriver\10$(var.Platform)\x86\msvcp90_32.dll" />
+              <File Id="msvcr90W10x86DLL" Source="minidriver\10$(var.Platform)\x86\msvcr90_32.dll" />
+            </Component>
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <?if $(var.Platform) = "x64" ?>
+    <!-- Force install on X64 Windows. "on demand" install smartcard driver does not work on Terminals. X32 has side effects with WIX burn -->
+    <CustomAction Id="InstallMinidriver" Directory="APPLICATIONFOLDER" Execute="deferred" Impersonate="no" HideTarget="yes" Return="ignore"
+        ExeCommand="rundll32 syssetup,SetupInfObjectInstallAction DefaultInstall 128 [APPLICATIONFOLDER]\\esteidcm.inf" />
+    <InstallExecuteSequence>
+        <Custom Action="InstallMinidriver" After="InstallFiles">NOT Installed</Custom>
+    </InstallExecuteSequence>
+    <?endif ?>
+
+    <Feature Id="minidriver" Title="Estonian Minidriver">
+      <ComponentRef Id="miniDriverW7"/>
+      <ComponentRef Id="miniDriverW8"/>
+      <ComponentRef Id="miniDriverW8.1"/>
+      <ComponentRef Id="miniDriverW10"/>
+      <ComponentRef Id="miniDriverW7x86Components"/>
+      <ComponentRef Id="miniDriverW7x64Components"/>
+      <ComponentRef Id="miniDriverW8x86Components"/>
+      <ComponentRef Id="miniDriverW8x64Components"/>
+      <ComponentRef Id="miniDriverW8.1x86Components"/>
+      <ComponentRef Id="miniDriverW8.1x64Components"/>
+      <ComponentRef Id="miniDriverW10x86Components"/>
+      <ComponentRef Id="miniDriverW10x64Components"/>
+      <?if $(var.Platform) = "x64" ?>
+      <ComponentRef Id="RemoveMinidriverRegistrationComponentX64"/>
+      <ComponentRef Id="EnableScPnP64"/>
+      <?endif ?>
+      <ComponentRef Id="RemoveMinidriverRegistrationComponentX86"/>
+      <ComponentRef Id="EnableScPnP32"/>
+      <ComponentRef Id="SCardSvrStart"/>
+      <ComponentRef Id="CertPropSvcStart"/>
+    </Feature>
+  </Product>
+</Wix>
