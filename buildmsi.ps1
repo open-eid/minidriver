@@ -22,6 +22,7 @@ foreach($platform in @("x86", "x64")) {
     & $candle -nologo minidriver.wxs "-dPlatform=$platform" "-dMSI_VERSION=$msiversion" `
         -arch $platform -ext WixDifxAppExtension
     & $light -nologo -out "minidriver_$msiversion.$platform.msi" -ext WixUIExtension -ext WixDifxAppExtension `
+        -dWixUILicenseRtf="LICENSE.rtf" -dWixUIDialogBmp="dlgbmp.bmp" -dWixUIBannerBmp="banner.bmp" `
         "$env:WIX\bin\difxapp_$platform.wixlib" minidriver.wixobj
     if($sign) {
         & signtool.exe sign /a /v /s MY /n "$sign" /fd SHA256 /du http://installer.id.ee `
