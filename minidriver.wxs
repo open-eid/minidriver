@@ -26,7 +26,8 @@
     <Directory Id="TARGETDIR" Name="SourceDir">
 <?if $(var.Platform) = "x64" ?>
       <!-- installing 64-bit part of ATR records on 64-bit machine -->
-      <Component Id="RemoveMinidriverRegistrationComponentX64" Guid="B0DFF274-B96A-48f1-89F1-400A271770DB" Win64="yes">
+      <Component Id="RemoveMinidriverRegistrationComponentX64" Guid="B0DFF274-B96A-48f1-89F1-400A271770DB" Win64="yes" Transitive="yes">
+        <Condition><![CDATA[NOT Installed]]></Condition>
         <?include minidriver_registry_cleanup.wxi?>
       </Component>
 
@@ -44,7 +45,8 @@
       </Component>
 
       <!-- installing 32-bit part of ATR records on both 64-bit and 32-bit machines -->
-      <Component Id="RemoveMinidriverRegistrationComponentX86" Guid="4EEC213A-7D2C-4062-9EEF-BA18BFEB7F12" Win64="no">
+      <Component Id="RemoveMinidriverRegistrationComponentX86" Guid="4EEC213A-7D2C-4062-9EEF-BA18BFEB7F12" Win64="no" Transitive="yes">
+        <Condition><![CDATA[NOT Installed]]></Condition>
         <?include minidriver_registry_cleanup.wxi?>
       </Component>
 
