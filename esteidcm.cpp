@@ -26,6 +26,7 @@
 
 static const BYTE cardapps[] = { 1, 'm', 's', 'c', 'p', 0, 0, 0, 0 };
 static const BYTE cardcf[] = { 0, 0, 0, 0, 0, 0 };
+HWND cp;
 
 using namespace std;
 
@@ -76,23 +77,6 @@ static DWORD keySize(__in PCARD_DATA pCardData, PCCERT_CONTEXT cer)
 	pCardData->pfnCspFree(oh);
 	return size;
 }
-
-void GetFileVersionOfApplication();
-
-
-HWND cp;
-bool TestMode;
-char procName[1024];
-unsigned int maxSpecVersion = 7;
-LPCTSTR subKey = TEXT("Software\\SK\\EstEIDMinidriver");
-
-#define DEFUN(a) a
-
-const char *debugFile;
-const char *APDUdebugFile;
-OSVERSIONINFO osver;
-
-bool attachedProcessPermited;
 
 DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
 {
@@ -181,64 +165,12 @@ DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
 
 BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
-	SCardLog::writeLog("[%s:%d][MD] DllMain", __FUNCTION__, __LINE__);
+	SCardLog::writeLog("[%s:%d][MD] DllMain %u", __FUNCTION__, __LINE__, ul_reason_for_call);
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
-		{
-			SCardLog::writeLog("[%s:%d][MD] DLL_PROCESS_ATTACH", __FUNCTION__, __LINE__);
-			TestMode = false;
-			attachedProcessPermited = false;
-			HKEY rootKey;
-			DWORD dwType;
-			CHAR lpData[1024];
-			DWORD lpSize = sizeof(lpData);
-			BOOL getVersionExRet = 0;
-
-			if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, subKey, NULL, KEY_READ, &rootKey)==ERROR_SUCCESS)
-			{
-				if(RegQueryValueEx(rootKey, TEXT("version"), NULL, &dwType, (LPBYTE)&lpData, &lpSize)==ERROR_SUCCESS)
-				{
-					if(lpSize == 4)
-					{
-						int tmp = atoi(lpData);
-						if(tmp == 5)
-							maxSpecVersion = 5;
-						else if(tmp == 6)
-							maxSpecVersion = 6;
-						else
-							maxSpecVersion = 7;
-					}
-					else
-					{
-						maxSpecVersion = 7;
-					}
-				}
-			}
-
-			WCHAR _cname[MAX_PATH * 4 ] = L"\0";
-			PWCHAR cname = _cname + 1;
-			HMODULE caller = GetModuleHandle(NULL);
-			GetModuleFileName(caller,cname,MAX_PATH);
-			PWCHAR fl = (PTCHAR )cname  + lstrlen(cname) -1;
-			while (isalnum(*fl) || (L'.' == *fl) || (L'_' == *fl))
-				fl--;
-			fl++;
-
-			GetFileVersionOfApplication();
-			SCardLog::writeLog("[%s:%d][MD] Attached process %S. Using spec version: %i", __FUNCTION__, __LINE__, NULLWSTR(fl), maxSpecVersion);
-
-
-			osver.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-			getVersionExRet = GetVersionEx((OSVERSIONINFO*)&osver);
-			if(getVersionExRet == 0)
-				SCardLog::writeLog("[%s:%d][MD] Failed to get operating system info", __FUNCTION__, __LINE__);
-			else
-				SCardLog::writeLog("[%s:%d][MD] Running on OS version: %i.%i build %i", __FUNCTION__, __LINE__, osver.dwMajorVersion, osver.dwMinorVersion, osver.dwBuildNumber);
-		}
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
-		break;
 	case DLL_PROCESS_DETACH:
 		break;
 	}
@@ -251,6 +183,8 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
 	SCardLog::writeLog("[%s:%d][MD] CardAcquireContext, dwVersion=%u, name=%S"", hScard=0x%08X, hSCardCtx=0x%08X", __FUNCTION__, __LINE__, pCardData->dwVersion, NULLWSTR(pCardData->pwszCardName),
 		pCardData->hScard, pCardData->hSCardCtx);
+	if (pCardData->dwVersion < CARD_DATA_VERSION_SEVEN)
+		RETURN(ERROR_REVISION_MISMATCH);
 	if (dwFlags ||
 		pCardData->cbAtr == 0 ||
 		pCardData->cbAtr == 0xffffffff ||
@@ -262,7 +196,26 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
 	if (!pCardData->hScard)
 		RETURN(SCARD_E_INVALID_HANDLE);
-	if (!pCardData->pbAtr[0])
+
+	static vector<vector<byte>> atrs{
+		{ 0x3B, 0xFE, 0x94, 0x00, 0xFF, 0x80, 0xB1, 0xFA, 0x45, 0x1F, 0x03, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30, 0x43 }, /*ESTEID_V1_COLD_ATR*/
+		{ 0x3B, 0x6E, 0x00, 0xFF, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30 }, /*ESTEID_V1_WARM_ATR*/
+		{ 0x3B, 0xDE, 0x18, 0xFF, 0xC0, 0x80, 0xB1, 0xFE, 0x45, 0x1F, 0x03, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30, 0x2B }, /*ESTEID_V1_2007_COLD_ATR*/
+		{ 0x3B, 0x5E, 0x11, 0xFF, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30 }, /*ESTEID_V1_2007_WARM_ATR*/
+		{ 0x3B, 0x6E, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30 }, /*ESTEID_V1_1_COLD_ATR*/
+		{ 0x3B, 0xFE, 0x18, 0x00, 0x00, 0x80, 0x31, 0xFE, 0x45, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30, 0xA8 }, /*ESTEID_V3_COLD_DEV1_ATR*/
+		{ 0x3B, 0xFE, 0x18, 0x00, 0x00, 0x80, 0x31, 0xFE, 0x45, 0x80, 0x31, 0x80, 0x66, 0x40, 0x90, 0xA4, 0x56, 0x1B, 0x16, 0x83, 0x01, 0x90, 0x00, 0x86 }, /*ESTEID_V3_WARM_DEV1_ATR*/
+		{ 0x3B, 0xFE, 0x18, 0x00, 0x00, 0x80, 0x31, 0xFE, 0x45, 0x80, 0x31, 0x80, 0x66, 0x40, 0x90, 0xA4, 0x16, 0x2A, 0x00, 0x83, 0x01, 0x90, 0x00, 0xE1 }, /*ESTEID_V3_WARM_DEV2_ATR*/
+		{ 0x3B, 0xFE, 0x18, 0x00, 0x00, 0x80, 0x31, 0xFE, 0x45, 0x80, 0x31, 0x80, 0x66, 0x40, 0x90, 0xA4, 0x16, 0x2A, 0x00, 0x83, 0x0F, 0x90, 0x00, 0xEF }, /*ESTEID_V3_WARM_DEV3_ATR*/
+		{ 0x3B, 0xF9, 0x18, 0x00, 0x00, 0xC0, 0x0A, 0x31, 0xFE, 0x45, 0x53, 0x46, 0x2D, 0x34, 0x43, 0x43, 0x2D, 0x30, 0x31, 0x81 }, /*ESTEID_V35_COLD_DEV1_ATR*/
+		{ 0x3B, 0xF8, 0x13, 0x00, 0x00, 0x81, 0x31, 0xFE, 0x45, 0x4A, 0x43, 0x4F, 0x50, 0x76, 0x32, 0x34, 0x31, 0xB7 }, /*ESTEID_V35_COLD_DEV2_ATR*/
+		{ 0x3B, 0xFA, 0x18, 0x00, 0x00, 0x80, 0x31, 0xFE, 0x45, 0xFE, 0x65, 0x49, 0x44, 0x20, 0x2F, 0x20, 0x50, 0x4B, 0x49, 0x03 }, /*ESTEID_V35_COLD_DEV3_ATR*/
+		{ 0x3B, 0xFE, 0x18, 0x00, 0x00, 0x80, 0x31, 0xFE, 0x45, 0x80, 0x31, 0x80, 0x66, 0x40, 0x90, 0xA4, 0x16, 0x2A, 0x00, 0x83, 0x0F, 0x90, 0x00, 0xEF }, /*ESTEID_V35_WARM_ATR*/
+		{ 0x3B, 0xFE, 0x18, 0x00, 0x00, 0x80, 0x31, 0xFE, 0x45, 0x80, 0x31, 0x80, 0x66, 0x40, 0x90, 0xA5, 0x10, 0x2E, 0x03, 0x83, 0x0F, 0x90, 0x00, 0xEF }, /*UPDATER_TEST_CARDS*/
+	};
+	if (!any_of(atrs.cbegin(), atrs.cend(), [&](const vector<byte> &atr){
+			return atr.size() == pCardData->cbAtr && equal(atr.cbegin(), atr.cend(), pCardData->pbAtr);
+		}))
 		RETURN(SCARD_E_UNKNOWN_CARD);
 
 	try {
@@ -370,52 +323,37 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA pCardData)
 DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData, __in BYTE bContainerIndex, __in LPCWSTR wszProperty,
     __out_bcount_part_opt(cbData, *pdwDataLen) PBYTE pbData, __in DWORD cbData, __out PDWORD pdwDataLen, __in DWORD dwFlags)
 {
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
+	if (!pCardData)
+		RETURN(SCARD_E_INVALID_PARAMETER);
 	SCardLog::writeLog("[%s:%d][MD] CardGetContainerProperty bContainerIndex=%u, wszProperty=%S"", cbData=%u, dwFlags=0x%08X",__FUNCTION__, __LINE__, bContainerIndex, NULLWSTR(wszProperty), cbData,dwFlags);
-	if (!wszProperty) 
-		return SCARD_E_INVALID_PARAMETER;
-	if (dwFlags) 
-		return SCARD_E_INVALID_PARAMETER;
-	if (!pbData)
-		return SCARD_E_INVALID_PARAMETER;
-	if (!pdwDataLen) 
-		return SCARD_E_INVALID_PARAMETER;
+	if (!wszProperty || dwFlags || !pbData || !pdwDataLen)
+		RETURN(SCARD_E_INVALID_PARAMETER);
 
-	if (wstring(CCP_CONTAINER_INFO) == wszProperty )
+	if (wcscmp(CCP_CONTAINER_INFO, wszProperty) == 0)
 	{
-		PCONTAINER_INFO p = (PCONTAINER_INFO) pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData >= sizeof(DWORD))
-			if (p->dwVersion != CONTAINER_INFO_CURRENT_VERSION && p->dwVersion != 0 )
-				return ERROR_REVISION_MISMATCH;
+		PCONTAINER_INFO p = PCONTAINER_INFO(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
-			return ERROR_INSUFFICIENT_BUFFER;
-		SCardLog::writeLog("[%s:%d][MD] -->calling CardGetContainerInfo",__FUNCTION__, __LINE__);
-		DWORD code = CardGetContainerInfo(pCardData,bContainerIndex,0,p);
-		SCardLog::writeLog("[%s:%d][MD] <--calling CardGetContainerInfo",__FUNCTION__, __LINE__);
-		return code;
+			RETURN(ERROR_INSUFFICIENT_BUFFER);
+		return CardGetContainerInfo(pCardData, bContainerIndex, 0, p);
 	}
-	if (wstring(CCP_PIN_IDENTIFIER) == wszProperty )
+	if (wcscmp(CCP_PIN_IDENTIFIER, wszProperty) == 0)
 	{
-		PPIN_ID p = (PPIN_ID) pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
+		PPIN_ID p = PPIN_ID(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
-			return ERROR_INSUFFICIENT_BUFFER;
+			RETURN(ERROR_INSUFFICIENT_BUFFER);
 		switch (bContainerIndex)
 		{
-			case AUTH_CONTAINER_INDEX:
-				*p = AUTH_PIN_ID;
-				break;
-			case SIGN_CONTAINER_INDEX:
-				*p = SIGN_PIN_ID;
-				break;
-			default:
-				return SCARD_E_NO_KEY_CONTAINER;
+		case AUTH_CONTAINER_INDEX: *p = AUTH_PIN_ID; break;
+		case SIGN_CONTAINER_INDEX: *p = SIGN_PIN_ID; break;
+		default: RETURN(SCARD_E_NO_KEY_CONTAINER);
 		}
-		SCardLog::writeLog("[%s:%d][MD] Return Pin id %u",__FUNCTION__, __LINE__, *p);
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	return SCARD_E_INVALID_PARAMETER;
+	RETURN(SCARD_E_INVALID_PARAMETER);
 }
 
 DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty,
@@ -501,84 +439,31 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
 		if (p->dwVersion != PIN_INFO_CURRENT_VERSION)
 			RETURN(ERROR_REVISION_MISMATCH);
+		p->dwFlags = 0;
+		p->dwChangePermission = CREATE_PIN_SET(dwFlags);
+		p->dwUnblockPermission = dwFlags == PUKK_PIN_ID ? CREATE_PIN_SET(PUKK_PIN_ID) : 0;
+		p->PinType = AlphaNumericPinType;
+		p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
+		p->PinCachePolicy.dwPinCachePolicyInfo = 0;
+		p->PinCachePolicy.PinCachePolicyType = dwFlags == AUTH_PIN_ID ? PinCacheNormal : PinCacheNone;
 		try
 		{
-			EstEIDManager estEIDManager(pCardData->hSCardCtx, pCardData->hScard);
-			if(estEIDManager.isSecureConnection())
+			if (EstEIDManager(pCardData->hSCardCtx, pCardData->hScard).isSecureConnection())
 			{
-				SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_PIN_INFO: PINPAD enabled",__FUNCTION__, __LINE__);
+				SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_PIN_INFO: PINPAD enabled", __FUNCTION__, __LINE__);
 				p->PinType = ExternalPinType;
 			}
-			else
-			{
-				SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_PIN_INFO: No PINPAD found",__FUNCTION__, __LINE__);
-				p->PinType = AlphaNumericPinType;
-			}
-
 		}
-		catch (runtime_error &err )
+		catch (const runtime_error &err)
 		{
-			SCardLog::writeLog("[%s:%d][MD] runtime_error in CardReadFile '%s'",__FUNCTION__, __LINE__, err.what());
-			
-			RETURN(SCARD_E_FILE_NOT_FOUND);
+			SCardLog::writeLog("[%s:%d][MD] runtime_error in CardReadFile '%s'", __FUNCTION__, __LINE__, err.what());
 		}
-		p->dwFlags = 0;
 		switch (dwFlags)
 		{
-			case AUTH_PIN_ID:
-				SCardLog::writeLog("[%s:%d][MD] returning info on PIN 1 [%u]",__FUNCTION__, __LINE__, dwFlags);
-				p->PinPurpose = AuthenticationPin;
-				p->PinCachePolicy.dwVersion = 6;
-				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
-				p->PinCachePolicy.PinCachePolicyType = PinCacheNormal;
-				if(TestMode == false)
-				{
-					p->dwChangePermission = CREATE_PIN_SET(AUTH_PIN_ID);
-					p->dwUnblockPermission = CREATE_PIN_SET(PUKK_PIN_ID);
-				}
-				else
-				{
-					p->dwChangePermission = 0;
-					p->dwUnblockPermission = 0;
-				}
-				break;
-			case SIGN_PIN_ID:
-				SCardLog::writeLog("[%s:%d][MD] returning info on PIN 2 [%u]",__FUNCTION__, __LINE__, dwFlags);
-				p->PinPurpose = DigitalSignaturePin;
-				p->PinCachePolicy.dwVersion = 6;
-				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
-				p->PinCachePolicy.PinCachePolicyType = PinCacheNone;
-				if(TestMode == false)
-				{
-					p->dwChangePermission = CREATE_PIN_SET(SIGN_PIN_ID);
-					p->dwUnblockPermission = CREATE_PIN_SET(PUKK_PIN_ID);
-				}
-				else
-				{
-					p->dwChangePermission = 0;
-					p->dwUnblockPermission = 0;
-				}
-				break;
-			case PUKK_PIN_ID:
-				SCardLog::writeLog("[%s:%d][MD] returning info on PUK [%u]",__FUNCTION__, __LINE__, dwFlags);
-				p->PinPurpose = UnblockOnlyPin;
-				p->PinCachePolicy.dwVersion = 6;
-				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
-				p->PinCachePolicy.PinCachePolicyType = PinCacheNone;
-				if(TestMode == false)
-				{
-					p->dwChangePermission = CREATE_PIN_SET(PUKK_PIN_ID);
-					p->dwUnblockPermission = 0;
-				}
-				else
-				{
-					p->dwChangePermission = 0;
-					p->dwUnblockPermission = 0;
-				}
-				break;
-			default:
-				SCardLog::writeLog("[%s:%d][MD] Invalid Pin number %u requested",__FUNCTION__, __LINE__, dwFlags);
-				RETURN(SCARD_E_INVALID_PARAMETER);
+		case AUTH_PIN_ID: p->PinPurpose = AuthenticationPin; break;
+		case SIGN_PIN_ID: p->PinPurpose = DigitalSignaturePin; break;
+		case PUKK_PIN_ID: p->PinPurpose = UnblockOnlyPin; break;
+		default: RETURN(SCARD_E_INVALID_PARAMETER);
 		}
 		RETURN(NO_ERROR);
 	}
@@ -632,62 +517,52 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 DWORD WINAPI CardSetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty, __in_bcount(cbDataLen) PBYTE pbData,
     __in DWORD cbDataLen, __in DWORD dwFlags)
 {
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
-	SCardLog::writeLog("[%s:%d][MD] CardSetProperty wszProperty=%S"", cbDataLen=%u, dwFlags=%u",__FUNCTION__, __LINE__, NULLWSTR(wszProperty), cbDataLen, dwFlags);
-	if (!wszProperty) return SCARD_E_INVALID_PARAMETER;
+	if (!pCardData || !wszProperty)
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	SCardLog::writeLog("[%s:%d][MD] CardSetProperty wszProperty=%S"", cbDataLen=%u, dwFlags=%u", __FUNCTION__, __LINE__, NULLWSTR(wszProperty), cbDataLen, dwFlags);
 
-	if (wstring(CP_CARD_PIN_STRENGTH_VERIFY) == wszProperty || wstring(CP_CARD_PIN_INFO) == wszProperty)
-		return SCARD_W_SECURITY_VIOLATION;
-
-	if (dwFlags)
-		return SCARD_E_INVALID_PARAMETER;
-
-	if (wstring(CP_PIN_CONTEXT_STRING) == wszProperty)
-		return NO_ERROR;
-
-	if (wstring(CP_CARD_CACHE_MODE) == wszProperty ||  wstring(CP_SUPPORTS_WIN_X509_ENROLLMENT) == wszProperty ||
-		wstring(CP_CARD_GUID) == wszProperty || wstring(CP_CARD_SERIAL_NO)  == wszProperty )
-	{
-		return SCARD_W_SECURITY_VIOLATION;
-	}
-
-	if (!pbData)
-		return SCARD_E_INVALID_PARAMETER;
-	if (!cbDataLen)
-		return SCARD_E_INVALID_PARAMETER;
-
-	if (wstring(CP_PARENT_WINDOW) == wszProperty)
+	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0)
+		RETURN(NO_ERROR);
+	if (!pbData || !cbDataLen)
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	if (wcscmp(CP_CARD_CACHE_MODE, wszProperty) == 0 ||
+		wcscmp(CP_SUPPORTS_WIN_X509_ENROLLMENT, wszProperty) == 0 ||
+		wcscmp(CP_CARD_GUID, wszProperty) == 0 ||
+		wcscmp(CP_CARD_SERIAL_NO, wszProperty) == 0 ||
+		wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) == 0 ||
+		wcscmp(CP_CARD_PIN_INFO, wszProperty) == 0)
+		RETURN(SCARD_W_SECURITY_VIOLATION);
+	if (wcscmp(CP_PARENT_WINDOW, wszProperty) == 0)
 	{
 		SCardLog::writeLog("[%s:%d][MD] CardSetProperty CP_PARENT_WINDOW", __FUNCTION__, __LINE__);
+		if (dwFlags)
+			RETURN(SCARD_E_INVALID_PARAMETER);
 		if (cbDataLen != sizeof(pCardData)) 
-			return SCARD_E_INVALID_PARAMETER;
+			RETURN(SCARD_E_INVALID_PARAMETER);
 		cp = *((HWND *) pbData);
-		if (cp!=0 && !IsWindow(cp))
+		if (cp != 0 && !IsWindow(cp))
 		{
 			cp = NULL;
-			return SCARD_E_INVALID_PARAMETER;
+			RETURN(SCARD_E_INVALID_PARAMETER);
 		}
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	return SCARD_E_INVALID_PARAMETER;
+	RETURN(SCARD_E_INVALID_PARAMETER);
 }
 
 
 DWORD WINAPI CardQueryCapabilities(__in PCARD_DATA pCardData, __in PCARD_CAPABILITIES pCardCapabilities)
 {
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
-	if (!pCardCapabilities) return SCARD_E_INVALID_PARAMETER;
-
+	if (!pCardData || !pCardCapabilities)
+		RETURN(SCARD_E_INVALID_PARAMETER);
 	if (pCardCapabilities->dwVersion != CARD_CAPABILITIES_CURRENT_VERSION && pCardCapabilities->dwVersion != 0)
-		return ERROR_REVISION_MISMATCH;
-
+		RETURN(ERROR_REVISION_MISMATCH);
 	pCardCapabilities->dwVersion = CARD_CAPABILITIES_CURRENT_VERSION;
-	SCardLog::writeLog("[%s:%d][MD] CardQueryCapabilities dwVersion=%u, fKeyGen=%u, fCertificateCompression=%u",__FUNCTION__, __LINE__, pCardCapabilities->dwVersion,
-		pCardCapabilities->fKeyGen ,pCardCapabilities->fCertificateCompression);
-
+	SCardLog::writeLog("[%s:%d][MD] CardQueryCapabilities dwVersion=%u, fKeyGen=%u, fCertificateCompression=%u", __FUNCTION__, __LINE__, pCardCapabilities->dwVersion,
+		pCardCapabilities->fKeyGen, pCardCapabilities->fCertificateCompression);
 	pCardCapabilities->fCertificateCompression = TRUE;
 	pCardCapabilities->fKeyGen = FALSE;
-	return NO_ERROR;
+	RETURN(NO_ERROR);
 }
 
 DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA  pCardData, __in BYTE bContainerIndex, __in DWORD dwFlags, __in PCONTAINER_INFO pContainerInfo)
@@ -1151,35 +1026,29 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 
 DWORD WINAPI CardEnumFiles(__in PCARD_DATA  pCardData, __in LPSTR pszDirectoryName, __out_ecount(*pdwcbFileName)LPSTR *pmszFileNames, __out LPDWORD pdwcbFileName, __in DWORD dwFlags)
 {
-	SCardLog::writeLog("[%s:%d][MD] CardEnumFiles",__FUNCTION__, __LINE__);
-	const char root_files[] = "cardapps\0cardcf\0cardid\0\0";
-	const char mscp_files[] = "kxc00\0kxc01\0cmapfile\0\0";
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
-	if (!pmszFileNames) return SCARD_E_INVALID_PARAMETER;
-	if (!pdwcbFileName) return SCARD_E_INVALID_PARAMETER;
-	if (dwFlags) return SCARD_E_INVALID_PARAMETER;
-
+	if (!pCardData || !pmszFileNames || !pdwcbFileName || dwFlags)
+		RETURN(SCARD_E_INVALID_PARAMETER);
 	if (!pszDirectoryName || !strlen(pszDirectoryName))
 	{
-		DWORD sz = sizeof(root_files) - 1;
-		LPSTR t = (LPSTR)(*pCardData->pfnCspAlloc)(sz);
-		if (!t) return ERROR_NOT_ENOUGH_MEMORY;
-		CopyMemory(t,root_files,sz);
-		*pmszFileNames = t;
-		*pdwcbFileName = sz;
-		return NO_ERROR;
+		static const char root_files[] = "cardapps\0" szCACHE_FILE "\0" szCARD_IDENTIFIER_FILE "\0\0";
+		*pdwcbFileName = sizeof(root_files) - 1;
+		*pmszFileNames = LPSTR(pCardData->pfnCspAlloc(*pdwcbFileName));
+		if (!*pmszFileNames)
+			RETURN(ERROR_NOT_ENOUGH_MEMORY);
+		CopyMemory(*pmszFileNames, root_files, *pdwcbFileName);
+		RETURN(NO_ERROR);
 	}
-	if (!_strcmpi(pszDirectoryName,"mscp"))
+	if (!_strcmpi(pszDirectoryName, szBASE_CSP_DIR))
 	{
-		DWORD sz = sizeof(mscp_files) - 1;
-		LPSTR t = (LPSTR)(*pCardData->pfnCspAlloc)(sz);
-		if (!t) return ERROR_NOT_ENOUGH_MEMORY;
-		CopyMemory(t,mscp_files,sz);
-		*pmszFileNames = t;
-		*pdwcbFileName = sz;
-		return NO_ERROR;
+		static const char mscp_files[] = szCONTAINER_MAP_FILE "\0" szUSER_KEYEXCHANGE_CERT_PREFIX "00\0" szUSER_SIGNATURE_CERT_PREFIX "01\0\0";
+		*pdwcbFileName = sizeof(mscp_files) - 1;
+		*pmszFileNames = LPSTR(pCardData->pfnCspAlloc(*pdwcbFileName));
+		if (!*pmszFileNames)
+			RETURN(ERROR_NOT_ENOUGH_MEMORY);
+		CopyMemory(*pmszFileNames, mscp_files, *pdwcbFileName);
+		RETURN(NO_ERROR);
 	}
-	return SCARD_E_DIR_NOT_FOUND;
+	RETURN(SCARD_E_DIR_NOT_FOUND);
 }
 
 
@@ -1250,8 +1119,10 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 		CopyMemory(*ppbData, files->cardid, *pcbData);
 		RETURN(NO_ERROR);
 	}
-	if (pszDirectoryName && !_strcmpi(pszDirectoryName, szBASE_CSP_DIR))
+	if (pszDirectoryName)
 	{
+		if (_strcmpi(pszDirectoryName, szBASE_CSP_DIR))
+			RETURN(SCARD_E_DIR_NOT_FOUND);
 		if (!_strcmpi(pszFileName, szCONTAINER_MAP_FILE))
 		{
 			string autContName = "";
@@ -1312,22 +1183,15 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 
 DWORD WINAPI CardQueryFreeSpace( __in PCARD_DATA pCardData, __in DWORD dwFlags, __in PCARD_FREE_SPACE_INFO pCardFreeSpaceInfo)
 {
-	if (!pCardData) 
-		return SCARD_E_INVALID_PARAMETER;
-	if (!pCardFreeSpaceInfo) 
-		return SCARD_E_INVALID_PARAMETER;
-	SCardLog::writeLog("[%s:%d][MD] CardWriteFile dwFlags=0x%08X, dwVersion=%u",__FUNCTION__, __LINE__, dwFlags, pCardFreeSpaceInfo->dwVersion );
-	if (dwFlags) 
-		return SCARD_E_INVALID_PARAMETER;
-
+	if (!pCardData || !pCardFreeSpaceInfo || dwFlags)
+		RETURN(SCARD_E_INVALID_PARAMETER);
 	if (pCardFreeSpaceInfo->dwVersion != CARD_FREE_SPACE_INFO_CURRENT_VERSION && pCardFreeSpaceInfo->dwVersion != 0)
-		return ERROR_REVISION_MISMATCH;
-
+		RETURN(ERROR_REVISION_MISMATCH);
 	pCardFreeSpaceInfo->dwVersion = CARD_FREE_SPACE_INFO_CURRENT_VERSION;
 	pCardFreeSpaceInfo->dwBytesAvailable = 0;
 	pCardFreeSpaceInfo->dwKeyContainersAvailable = 0;
 	pCardFreeSpaceInfo->dwMaxKeyContainers = 2;
-	return NO_ERROR;
+	RETURN(NO_ERROR);
 }
 
 DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData, __in DWORD dwKeySpec, __in DWORD dwFlags, __in PCARD_KEY_SIZES pKeySizes)
@@ -1701,66 +1565,10 @@ DWORD WINAPI CardSignData( __in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pI
 	return NO_ERROR;
 }
 
-DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData, __deref_out_bcount(*pcbChallengeData) PBYTE *ppbChallengeData, __out PDWORD pcbChallengeData)
-{
-	SCardLog::writeLog("[%s:%d][MD] CardGetChallenge. Running in %s mode",__FUNCTION__, __LINE__, TestMode == true ? "TEST MODE" : "USER MODE");
-	if(TestMode == true)
-	{
-		SCardLog::writeLog("[%s:%d][MD] This feature is not supported in test mode: ",__FUNCTION__, __LINE__);
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
-	if(NULL == pCardData)
-		return SCARD_E_INVALID_PARAMETER;
-	if(NULL == ppbChallengeData)
-		return SCARD_E_INVALID_PARAMETER;
-	if(NULL == pcbChallengeData)
-		return SCARD_E_INVALID_PARAMETER;
-	try
-	{
-		std::stringstream APDU;
-		EstEIDManager estEIDManager(pCardData->hSCardCtx, pCardData->hScard);
-		ByteVec cardChallenge = estEIDManager.cardChallenge();
-
-		APDU.str("");
-		for (ByteVec::iterator it = cardChallenge.begin(); it < cardChallenge.end(); it++)
-			APDU << std::hex << std::setfill('0') << std::setw(2) << (int) *it << " ";
-
-		SCardLog::writeLog("[%s:%d][MD] Challenge recieved: %s",__FUNCTION__, __LINE__, APDU.str().c_str());
-
-		reverse(cardChallenge.begin(),cardChallenge.end());
-
-		APDU.str("");
-		for (ByteVec::iterator it = cardChallenge.begin(); it < cardChallenge.end(); it++)
-			APDU << std::hex << std::setfill('0') << std::setw(2) << (int) *it << " ";
-
-		SCardLog::writeLog("[%s:%d][MD] Challenge reverced: %s",__FUNCTION__, __LINE__, APDU.str().c_str());
-
-		DWORD sz = (DWORD)cardChallenge.size();
-		PBYTE t = (PBYTE)(*pCardData->pfnCspAlloc)(sz);
-		if(!t)
-			return ERROR_NOT_ENOUGH_MEMORY;
-		CopyMemory(t, &cardChallenge[0], cardChallenge.size());
-		*ppbChallengeData = t;
-		*pcbChallengeData = (DWORD)cardChallenge.size();
-	}
-	catch (AuthError &err)
-	{
-		SCardLog::writeLog("[%s:%d][MD] SCError exception thrown: %s",__FUNCTION__, __LINE__, err.what());
-		return SCARD_W_SECURITY_VIOLATION;
-	}
-	catch (runtime_error &ex)
-	{
-		SCardLog::writeLog("[%s:%d][MD] Runtime_error exception thrown:",__FUNCTION__, __LINE__, ex.what());
-		return SCARD_E_UNEXPECTED;
-	}
-	return NO_ERROR;
-}
-
-
 DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData, __in LPWSTR pwszUserId, __in_bcount(cbCurrentAuthenticator)PBYTE pbCurrentAuthenticator, __in DWORD cbCurrentAuthenticator,
 	__in_bcount(cbNewAuthenticator)PBYTE pbNewAuthenticator, __in DWORD cbNewAuthenticator, __in DWORD cRetryCount, __in DWORD dwFlags, __out_opt PDWORD pcAttemptsRemaining)
 {
-	SCardLog::writeLog("[%s:%d][MD] CardChangeAuthenticator. Running in %s mode", __FUNCTION__, __LINE__, TestMode == true ? "TEST MODE" : "USER MODE");
+	SCardLog::writeLog("[%s:%d][MD] CardChangeAuthenticator", __FUNCTION__, __LINE__);
 	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_UNBLOCK | CARD_PIN_SILENT_CONTEXT, ROLE_ADMIN, pbCurrentAuthenticator, cbCurrentAuthenticator, ROLE_USER, pbNewAuthenticator, cbNewAuthenticator, cRetryCount, pcAttemptsRemaining);
 }
 
@@ -1770,12 +1578,7 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData, __in DWORD dwF
 {
 	if(!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
- 	SCardLog::writeLog("[%s:%d][MD] CardChangeAuthenticatorEx. Running in %s mode.  dwVersion=%u, PIN_ID=%i, dwFlags=%s",__FUNCTION__, __LINE__, TestMode == true ? "TEST MODE" : "USER MODE", pCardData->dwVersion, dwAuthenticatingPinId, dwFlags == PIN_CHANGE_FLAG_CHANGEPIN ? "PIN_CHANGE_FLAG_CHANGEPIN" : "PIN_CHANGE_FLAG_UNBLOCK");
-	if(TestMode == true)
-	{
-		SCardLog::writeLog("[%s:%d][MD] This feature is not supported in test mode",__FUNCTION__, __LINE__);
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
+ 	SCardLog::writeLog("[%s:%d][MD] CardChangeAuthenticatorEx. dwVersion=%u, PIN_ID=%i, dwFlags=%s",__FUNCTION__, __LINE__, pCardData->dwVersion, dwAuthenticatingPinId, dwFlags == PIN_CHANGE_FLAG_CHANGEPIN ? "PIN_CHANGE_FLAG_CHANGEPIN" : "PIN_CHANGE_FLAG_UNBLOCK");
 	if(dwFlags == NULL)
 		return SCARD_E_INVALID_PARAMETER;
 	if(dwFlags != PIN_CHANGE_FLAG_CHANGEPIN && dwFlags != PIN_CHANGE_FLAG_UNBLOCK)
@@ -1902,12 +1705,7 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData, __in DWORD dwF
 DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData, __in LPWSTR pwszUserId, __in_bcount(cbAuthenticationData)PBYTE pbAuthenticationData, __in DWORD cbAuthenticationData,
 	__in_bcount(cbNewPinData)PBYTE pbNewPinData, __in DWORD cbNewPinData, __in DWORD cRetryCount, __in DWORD dwFlags)
 {
-	SCardLog::writeLog("[%s:%d][MD] CardUnblockPin. Running in %s mode",__FUNCTION__, __LINE__, TestMode == true ? "TEST MODE" : "USER MODE");
-	if(TestMode == true)
-	{
-		SCardLog::writeLog("[%s:%d][MD] This feature is not supported in test mode: ",__FUNCTION__, __LINE__);
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
+	SCardLog::writeLog("[%s:%d][MD] CardUnblockPin",__FUNCTION__, __LINE__);
 	try
 	{
 		SCardLog::writeLog("[%s:%d][MD] CardUnblockPin: Unblocking AUTH PIN",__FUNCTION__, __LINE__);
@@ -1940,53 +1738,11 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData, __in LPWSTR pwszUserId, 
 	return NO_ERROR;
 }
 
-void GetFileVersionOfApplication()
-{
-	SCardLog::writeLog("[%s:%d][MD] GetFileVersionOfApplication.",__FUNCTION__, __LINE__);
-#ifdef _WIN64
-	LPTSTR lpszFilePath = L"esteidcm64.dll";
-#else
-	LPTSTR lpszFilePath = L"esteidcm.dll";
-#endif
-
-	DWORD dwDummy;
-	DWORD dwFVISize = GetFileVersionInfoSize( lpszFilePath , &dwDummy );
-
-	LPBYTE lpVersionInfo = new BYTE[dwFVISize];
-
-	GetFileVersionInfo( lpszFilePath , 0 , dwFVISize , lpVersionInfo );
-
-	UINT uLen;
-	VS_FIXEDFILEINFO *lpFfi;
-
-	BOOL ret = VerQueryValue( lpVersionInfo , _T("\\") , (LPVOID *)&lpFfi , &uLen );
-
-	if(ret == 0)
-	{
-		SCardLog::writeLog("[%s:%d][MD] Failed to read driver version.",__FUNCTION__, __LINE__);
-		return;
-	}
-
-	DWORD dwFileVersionMS = lpFfi->dwFileVersionMS;
-	DWORD dwFileVersionLS = lpFfi->dwFileVersionLS;
-
-	delete [] lpVersionInfo;
-
-	DWORD dwLeftMost     = HIWORD(dwFileVersionMS);
-	DWORD dwSecondLeft   = LOWORD(dwFileVersionMS);
-	DWORD dwSecondRight  = HIWORD(dwFileVersionLS);
-	DWORD dwRightMost    = LOWORD(dwFileVersionLS);
-
-	size_t size = wcstombs(NULL, lpszFilePath, 0);
-	char *chFileName = new char[size+1];
-	wcstombs(chFileName, lpszFilePath, size+1);
-
-	SCardLog::writeLog("[%s:%d][MD] Driver version: %s %d.%d.%d.%d",__FUNCTION__, __LINE__, chFileName, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
-	delete chFileName;
-}
 
 
-
+DECLARE_UNSUPPORTED(CardGetChallenge(__in PCARD_DATA pCardData,
+	__deref_out_bcount(*pcbChallengeData) PBYTE *ppbChallengeData,
+	__out PDWORD pcbChallengeData))
 DECLARE_UNSUPPORTED(CardCreateDirectory(__in PCARD_DATA pCardData,
 	__in LPSTR pszDirectoryName,
 	__in CARD_DIRECTORY_ACCESS_CONDITION AccessCondition))
