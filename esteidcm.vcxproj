@@ -133,13 +133,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="esteidcm.cpp" />
-    <ClCompile Include="notimplemented.cpp" />
-    <ClCompile Include="PinPadUI.cpp" />
     <ClCompile Include="precompiled.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="esteidcm.h" />
-    <ClInclude Include="PinPadUI.h" />
     <ClInclude Include="precompiled.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="version.h" />
