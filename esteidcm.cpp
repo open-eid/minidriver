@@ -1,4 +1,4 @@
-/*
+﻿/*
 * EstEID Minidriver
 * 
 * This software is released under either the GNU Library General Public
@@ -11,21 +11,46 @@
 */
 
 #include "precompiled.h"
-#include "esteidcm.h"
-#include <algorithm>
-#include <stdlib.h>
-#include <crtdbg.h>
-#include <fstream>
-#include <string>
-#include <Windows.h>
-#include <WinBase.h>
-#include "PinPadUI.h"
-#include <commctrl.h>
+#include "EstEidManager.h"
 
-using std::wstring;
-using std::string;
-using std::runtime_error;
+#define _ENC_ (X509_ASN_ENCODING | PKCS_7_ASN_ENCODING)
+#define CALG_SHA_224 0x0000811d
+#define NULLSTR(a) (a == NULL ? "<NULL>" : a)
+#define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)
+#define AUTH_PIN_ID 1
+#define SIGN_PIN_ID 3
+#define PUKK_PIN_ID 5
+#define MAX_KEYLEN 2048
+#define CARDID_LEN 11
+#define MIN_DOCUMENT_ID_LEN 8
+#define MAX_DOCUMENT_ID_LEN 9
+#define AUTH_CONTAINER_INDEX 0
+#define SIGN_CONTAINER_INDEX 1
+#define RETURN(X) return logreturn(__FUNCTION__, __FILE__, __LINE__, #X, X)
+#define DECLARE_UNSUPPORTED(name) DWORD WINAPI name { RETURN(SCARD_E_UNSUPPORTED_FEATURE); }
 
+
+struct cardFiles
+{
+	BYTE file_appdir[9];
+	BYTE file_cardcf[6];
+	BYTE file_cardid[16];
+};
+
+using namespace std;
+
+typedef struct
+{
+	HWND hwndParentWindow;
+	int pinType;
+	int langId;
+} EXTERNAL_INFO, *PEXTERNAL_INFO;
+
+static DWORD logreturn(const char *functionName, const char *fileName, int lineNumber, const char *resultstr, DWORD result)
+{
+	SCardLog::writeLog("[%s:%d][MD] %s Returning %s", fileName, lineNumber, functionName, resultstr);
+	return result;
+}
 
 void GetFileVersionOfApplication();
 
@@ -37,11 +62,6 @@ unsigned int maxSpecVersion = 7;
 LPCTSTR subKey = TEXT("Software\\SK\\EstEIDMinidriver");
 
 #define DEFUN(a) a
-
-typedef struct _BCRYPT_PKCS1_PADDING_INFO_adhoc
-{
-  LPCWSTR pszAlgId;
-} BCRYPT_PKCS1_PADDING_INFO_adhoc;
 
 const char *debugFile;
 const char *APDUdebugFile;
@@ -66,6 +86,91 @@ typedef struct
 } PUBKEYSTRUCT;
 
 LPBYTE file_cmap[sizeof(CONTAINERMAPREC)];
+
+DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
+{
+	EXTERNAL_INFO *externalInfo = PEXTERNAL_INFO(lpParam);
+	TASKDIALOGCONFIG config = { 0 };
+	config.cbSize = sizeof(config);
+	config.hwndParent = externalInfo->hwndParentWindow;
+	config.hInstance = GetModuleHandle(NULL);
+	config.dwCommonButtons = TDCBF_CANCEL_BUTTON;
+	config.pszMainIcon = TD_INFORMATION_ICON;
+	config.dwFlags = TDF_EXPAND_FOOTER_AREA | TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER | TDF_ENABLE_HYPERLINKS;
+	config.pfCallback = [](HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData) {
+		switch (uNotification)
+		{
+		case TDN_CREATED:
+			SendMessage(hwnd, TDM_SET_PROGRESS_BAR_STATE, 0x0003, 0);
+			SendMessage(hwnd, TDM_SET_PROGRESS_BAR_POS, 100, 0L);
+			SendMessage(hwnd, TDM_SET_PROGRESS_BAR_STATE, 0x0001, 0);
+			break;
+		case TDN_TIMER:
+			SendMessage(hwnd, TDM_SET_PROGRESS_BAR_POS, (100 - int(wParam) / 300), 0);
+			break;
+		case TDN_HYPERLINK_CLICKED:
+			ShellExecute(0, L"open", LPCTSTR(lParam), 0, 0, SW_SHOW);
+			break;
+		case TDN_BUTTON_CLICKED:
+			SendMessage(hwnd, WM_NCDESTROY, 0, 0);
+			return S_FALSE;
+		}
+		return S_OK;
+	};
+	switch (externalInfo->langId)
+	{
+	case 0x0425:
+		config.pszMainInstruction = L"PIN Pad kaardilugeja";
+		config.pszContent = L"Sisestage PIN";
+		switch (externalInfo->pinType)
+		{
+		case 1:
+			config.pszContent = L"Palun sisestage autoriseerimise PIN (PIN1)";
+			config.pszExpandedInformation = L"Valitud tegevuse jaoks on vaja kasutada isikutuvastuse sertifikaati. Sertifikaadi kasutamiseks sisesta PIN1 kaardilugeja sõrmistikult.";
+			break;
+		case 3:
+			config.pszContent = L"Palun sisestage digiallkirjastamise PIN (PIN2)";
+			config.pszExpandedInformation = L"Valitud tegevuse jaoks on vaja kasutada allkirjastamise sertifikaati. Sertifikaadi kasutamiseks sisesta PIN2 kaardilugeja sõrmistikult.";
+			break;
+		default: break;
+		}
+		break;
+	case 0x0419:
+		config.pszMainInstruction = L"PIN Pad считыватель";
+		config.pszContent = L"Введите PIN код";
+		switch (externalInfo->pinType)
+		{
+		case 1:
+			config.pszContent = L"Введите код PIN для идентификации (PIN 1)";
+			config.pszExpandedInformation = L"Данная операция требует сертификат идентификации. Для использования сертификата идентификации введите PIN1 с клавиатуры считывателя.";
+			break;
+		case 3:
+			config.pszContent = L"Введите код PIN для подписи (PIN 2)";
+			config.pszExpandedInformation = L"Для данной операцин необходим сертификат подписи. Для использования сертификата подписи введите PIN2 с клавиатуры считывателя.";
+			break;
+		default: break;
+		}
+		break;
+	default:
+		config.pszMainInstruction = L"PIN Pad Reader";
+		config.pszContent = L"Enter PIN code";
+		switch (externalInfo->pinType)
+		{
+		case 1:
+			config.pszContent = L"Enter PIN for authentication (PIN 1)";
+			config.pszExpandedInformation = L"Selected action requires authentication certificate. For using authentication certificate enter PIN1 at the reader.";
+			break;
+		case 3:
+			config.pszContent = L"Enter PIN for digital signature (PIN 2)";
+			config.pszExpandedInformation = L"Selected action requires digital signature certificate. For using signature certificate enter PIN2 at the reader.";
+			break;
+		default: break;
+		}
+		break;
+	}
+	int buttonPressed = 0;
+	return TaskDialogIndirect(&config, &buttonPressed, NULL, NULL);
+}
 
 BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
@@ -446,14 +551,6 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData, __in BYTE bCont
 	return SCARD_E_INVALID_PARAMETER;
 }
 
-DWORD WINAPI CardSetContainerProperty(__in PCARD_DATA pCardData, __in BYTE bContainerIndex, __in LPCWSTR wszProperty,
-    __in_bcount(cbDataLen) PBYTE pbData, __in DWORD cbDataLen, __in DWORD dwFlags)
-{
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
-	SCardLog::writeLog("[%s:%d][MD] CardSetContainerProperty bContainerIndex=%u, wszProperty=%S"", cbDataLen=%u, dwFlags=0x%08X",__FUNCTION__, __LINE__, bContainerIndex, NULLWSTR(wszProperty), cbDataLen, dwFlags);
-	return SCARD_E_UNSUPPORTED_FEATURE;
-}
-
 DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty,
 	__out_bcount_part_opt(cbData, *pdwDataLen) PBYTE pbData, __in DWORD cbData, __out PDWORD pdwDataLen, __in DWORD dwFlags)
 {
@@ -819,12 +916,6 @@ DWORD WINAPI CardQueryCapabilities(__in PCARD_DATA pCardData, __in PCARD_CAPABIL
 	pCardCapabilities->fCertificateCompression = TRUE;
 	pCardCapabilities->fKeyGen = FALSE;
 	return NO_ERROR;
-}
-
-DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData, __in BYTE bContainerIndex, __in DWORD dwFlags, __in DWORD dwKeySpec,
-    __in DWORD dwKeySize, __in PBYTE pbKeyData)
-{
-	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI
@@ -1847,15 +1938,6 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 	return SCARD_E_FILE_NOT_FOUND;
 }
 
-
-DWORD WINAPI CardWriteFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName, __in LPSTR pszFileName, __in DWORD dwFlags, __in_bcount(cbData) PBYTE pbData, __in DWORD cbData)
-{
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
-	SCardLog::writeLog("[%s:%d][MD] CardWriteFile pszDirectoryName=%s, pszFileName=%s, dwFlags=0x%08X, cbData=%u",__FUNCTION__, __LINE__,NULLSTR(pszDirectoryName), NULLSTR(pszFileName), dwFlags, cbData);
-	return SCARD_E_UNSUPPORTED_FEATURE;
-}
-
-
 DWORD WINAPI CardQueryFreeSpace( __in PCARD_DATA pCardData, __in DWORD dwFlags, __in PCARD_FREE_SPACE_INFO pCardFreeSpaceInfo)
 {
 	if (!pCardData) 
@@ -2126,7 +2208,7 @@ DWORD WINAPI CardSignData( __in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pI
 			SCardLog::writeLog("[%s:%d][MD] Unsupported paddingtype",__FUNCTION__, __LINE__);
 			return SCARD_E_UNSUPPORTED_FEATURE;
 		}
-		BCRYPT_PKCS1_PADDING_INFO_adhoc *pinf = (BCRYPT_PKCS1_PADDING_INFO_adhoc *)pInfo->pPaddingInfo;
+		BCRYPT_PKCS1_PADDING_INFO *pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 		if (!pinf->pszAlgId) 
 			hashAlg = CALG_SSL3_SHAMD5;
 		else
@@ -2648,3 +2730,133 @@ void GetFileVersionOfApplication()
 	SCardLog::writeLog("[%s:%d][MD] Driver version: %s %d.%d.%d.%d",__FUNCTION__, __LINE__, chFileName, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
 	delete chFileName;
 }
+
+
+
+DECLARE_UNSUPPORTED(CardCreateDirectory(__in PCARD_DATA pCardData,
+	__in LPSTR pszDirectoryName,
+	__in CARD_DIRECTORY_ACCESS_CONDITION AccessCondition))
+DECLARE_UNSUPPORTED(CardDeleteDirectory(__in PCARD_DATA pCardData,
+	__in LPSTR pszDirectoryName))
+DECLARE_UNSUPPORTED(CardCreateFile(__in PCARD_DATA pCardData,
+	__in LPSTR pszDirectoryName,
+	__in LPSTR pszFileName,
+	__in DWORD cbInitialCreationSize,
+	__in CARD_FILE_ACCESS_CONDITION AccessCondition))
+DECLARE_UNSUPPORTED(CardWriteFile(__in PCARD_DATA pCardData,
+	__in LPSTR pszDirectoryName,
+	__in LPSTR pszFileName,
+	__in DWORD dwFlags,
+	__in_bcount(cbData) PBYTE pbData,
+	__in DWORD cbData))
+DECLARE_UNSUPPORTED(CardDeleteFile(__in PCARD_DATA pCardData,
+	__in LPSTR pszDirectoryName,
+	__in LPSTR pszFileName,
+	__in DWORD dwFlags))
+DECLARE_UNSUPPORTED(CspGetDHAgreement(__in PCARD_DATA pCardData,
+	__in PVOID hSecretAgreement,
+	__out BYTE* pbSecretAgreementIndex,
+	__in DWORD dwFlags))
+DECLARE_UNSUPPORTED(CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
+	__in_bcount(cbResponseData) PBYTE pbResponseData,
+	__in DWORD cbResponseData,
+	__out_opt PDWORD pcAttemptsRemaining))
+DECLARE_UNSUPPORTED(CardDeauthenticate(__in PCARD_DATA pCardData,
+	__in LPWSTR pwszUserId,
+	__in DWORD dwFlags))
+DECLARE_UNSUPPORTED(CardCreateContainer(__in PCARD_DATA pCardData,
+	__in BYTE bContainerIndex,
+	__in DWORD dwFlags,
+	__in DWORD dwKeySpec,
+	__in DWORD dwKeySize,
+	__in PBYTE pbKeyData))
+DECLARE_UNSUPPORTED(CardCreateContainerEx(__in PCARD_DATA  pCardData,
+	__in BYTE  bContainerIndex,
+	__in DWORD  dwFlags,
+	__in DWORD  dwKeySpec,
+	__in DWORD  dwKeySize,
+	__in PBYTE  pbKeyData,
+	__in PIN_ID  PinId))
+DECLARE_UNSUPPORTED(CardDeleteContainer(__in PCARD_DATA pCardData,
+	__in BYTE bContainerIndex,
+	__in DWORD dwReserved))
+DECLARE_UNSUPPORTED(CardConstructDHAgreement(__in PCARD_DATA pCardData,
+	__in PCARD_DH_AGREEMENT_INFO pAgreementInfo))
+DECLARE_UNSUPPORTED(CardDeriveKey(__in PCARD_DATA pCardData,
+	__in PCARD_DERIVE_KEY pAgreementInfo))
+DECLARE_UNSUPPORTED(CardDestroyDHAgreement(__in PCARD_DATA pCardData,
+	__in BYTE bSecretAgreementIndex,
+	__in DWORD dwFlags))
+DECLARE_UNSUPPORTED(CardDeauthenticateEx(__in PCARD_DATA pCardData,
+	__in PIN_SET PinId,
+	__in DWORD dwFlags))
+DECLARE_UNSUPPORTED(CardGetChallengeEx(__in PCARD_DATA pCardData,
+	__in PIN_ID PinId,
+	__deref_out_bcount(*pcbChallengeData) PBYTE *ppbChallengeData,
+	__out PDWORD pcbChallengeData,
+	__in DWORD dwFlags))
+DECLARE_UNSUPPORTED(CardSetContainerProperty(__in PCARD_DATA pCardData,
+	__in BYTE bContainerIndex,
+	__in LPCWSTR wszProperty,
+	__in_bcount(cbDataLen) PBYTE pbData,
+	__in DWORD cbDataLen,
+	__in DWORD dwFlags))
+DECLARE_UNSUPPORTED(MDImportSessionKey(__in PCARD_DATA  pCardData,
+	__in LPCWSTR  pwszBlobType,
+	__in LPCWSTR  pwszAlgId,
+	__out PCARD_KEY_HANDLE  phKey,
+	__in_bcount(cbInput) PBYTE  pbInput,
+	__in DWORD  cbInput))
+DECLARE_UNSUPPORTED(MDEncryptData(__in PCARD_DATA  pCardData,
+	__in CARD_KEY_HANDLE  hKey,
+	__in LPCWSTR  pwszSecureFunction,
+	__in_bcount(cbInput) PBYTE  pbInput,
+	__in DWORD  cbInput, __in DWORD  dwFlags,
+	__deref_out_ecount(*pcEncryptedData) PCARD_ENCRYPTED_DATA  *ppEncryptedData,
+	__out PDWORD  pcEncryptedData))
+DECLARE_UNSUPPORTED(CardImportSessionKey(__in PCARD_DATA  pCardData,
+	__in BYTE  bContainerIndex,
+	__in VOID  *pPaddingInfo,
+	__in LPCWSTR  pwszBlobType,
+	__in LPCWSTR  pwszAlgId,
+	__out CARD_KEY_HANDLE  *phKey,
+	__in_bcount(cbInput) PBYTE  pbInput,
+	__in DWORD  cbInput,
+	__in DWORD  dwFlags))
+DECLARE_UNSUPPORTED(CardGetSharedKeyHandle(__in PCARD_DATA  pCardData,
+	__in_bcount(cbInput) PBYTE  pbInput,
+	__in DWORD  cbInput,
+	__deref_opt_out_bcount(*pcbOutput)PBYTE  *ppbOutput,
+	__out_opt PDWORD  pcbOutput,
+	__out PCARD_KEY_HANDLE  phKey))
+DECLARE_UNSUPPORTED(CardGetAlgorithmProperty(__in PCARD_DATA  pCardData,
+	__in LPCWSTR   pwszAlgId,
+	__in LPCWSTR   pwszProperty,
+	__out_bcount_part_opt(cbData, *pdwDataLen)PBYTE  pbData,
+	__in DWORD  cbData,
+	__out PDWORD  pdwDataLen,
+	__in DWORD  dwFlags))
+DECLARE_UNSUPPORTED(CardGetKeyProperty(__in PCARD_DATA pCardData,
+	__in CARD_KEY_HANDLE  hKey,
+	__in LPCWSTR  pwszProperty,
+	__out_bcount_part_opt(cbData, *pdwDataLen) PBYTE  pbData,
+	__in DWORD  cbData,
+	__out PDWORD  pdwDataLen,
+	__in DWORD  dwFlags))
+DECLARE_UNSUPPORTED(CardSetKeyProperty(__in PCARD_DATA pCardData,
+	__in CARD_KEY_HANDLE  hKey,
+	__in LPCWSTR  pwszProperty,
+	__in_bcount(cbInput) PBYTE  pbInput,
+	__in DWORD  cbInput,
+	__in DWORD  dwFlags))
+DECLARE_UNSUPPORTED(CardDestroyKey(__in PCARD_DATA  pCardData,
+	__in CARD_KEY_HANDLE hKey))
+DECLARE_UNSUPPORTED(CardProcessEncryptedData(__in PCARD_DATA  pCardData,
+	__in CARD_KEY_HANDLE  hKey,
+	__in LPCWSTR  pwszSecureFunction,
+	__in_ecount(cEncryptedData)PCARD_ENCRYPTED_DATA  pEncryptedData,
+	__in DWORD  cEncryptedData,
+	__out_bcount_part_opt(cbOutput, *pdwOutputLen) PBYTE  pbOutput,
+	__in DWORD  cbOutput,
+	__out_opt PDWORD  pdwOutputLen,
+	__in DWORD  dwFlags))
