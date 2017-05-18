@@ -555,116 +555,68 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 	__out_bcount_part_opt(cbData, *pdwDataLen) PBYTE pbData, __in DWORD cbData, __out PDWORD pdwDataLen, __in DWORD dwFlags)
 {
 	SCardLog::writeLog("[%s:%d][MD] CardGetProperty wszProperty=%S, cbData=%u, dwFlags=%u",__FUNCTION__, __LINE__,NULLWSTR(wszProperty),cbData,dwFlags);
-	if (!pCardData)
-		return SCARD_E_INVALID_PARAMETER;
-	if (!wszProperty)
-		return SCARD_E_INVALID_PARAMETER;
-	if (!pbData)
-		return SCARD_E_INVALID_PARAMETER;
-	if (pdwDataLen == NULL)
-		return SCARD_E_INVALID_PARAMETER;
+	if (!pCardData || !wszProperty || !pbData || !pdwDataLen)
+		RETURN(SCARD_E_INVALID_PARAMETER);
 
-	if (wstring(CP_CARD_PIN_STRENGTH_CHANGE) == wszProperty || wstring(CP_CARD_PIN_STRENGTH_UNBLOCK) == wszProperty)
-		return SCARD_E_UNSUPPORTED_FEATURE;
-
-	if (dwFlags)
+	if (wcscmp(CP_CARD_FREE_SPACE, wszProperty) == 0)
 	{
-		if (wstring(CP_CARD_PIN_INFO) != wszProperty && wstring(CP_CARD_PIN_STRENGTH_VERIFY) != wszProperty && wstring(CP_CARD_KEYSIZES) != wszProperty)
-			return SCARD_E_INVALID_PARAMETER;
-		if (dwFlags > PUKK_PIN_ID )
-			return SCARD_E_INVALID_PARAMETER;
-	}
-
-	if (wstring(CP_CARD_FREE_SPACE) == wszProperty )
-	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_FREE_SPACE",__FUNCTION__, __LINE__);
-		PCARD_FREE_SPACE_INFO p = (PCARD_FREE_SPACE_INFO )pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
+		PCARD_FREE_SPACE_INFO p = PCARD_FREE_SPACE_INFO(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
-			return SCARD_E_INSUFFICIENT_BUFFER;
-		if (p->dwVersion > CARD_FREE_SPACE_INFO_CURRENT_VERSION )
-			return ERROR_REVISION_MISMATCH;
-		p->dwVersion = CARD_FREE_SPACE_INFO_CURRENT_VERSION;
-		p->dwBytesAvailable = 0;
-		p->dwKeyContainersAvailable = 0;
-		p->dwMaxKeyContainers = 2;
-		return NO_ERROR;
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
+		return CardQueryFreeSpace(pCardData, dwFlags, p);
 	}
-
-	if (wstring(CP_CARD_CAPABILITIES) == wszProperty )
+	if (wcscmp(CP_CARD_CAPABILITIES, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_CAPABILITIES",__FUNCTION__, __LINE__);
-		PCARD_CAPABILITIES p = (PCARD_CAPABILITIES )pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
-		if (p->dwVersion != CARD_CAPABILITIES_CURRENT_VERSION && p->dwVersion != 0)
-			return ERROR_REVISION_MISMATCH;
-		p->fCertificateCompression = TRUE;
-		p->fKeyGen = FALSE;
-		return NO_ERROR;
+		PCARD_CAPABILITIES p = PCARD_CAPABILITIES(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
+		return CardQueryCapabilities(pCardData, p);
 	}
-
-	if (wstring(CP_CARD_KEYSIZES) == wszProperty)
+	if (wcscmp(CP_CARD_KEYSIZES, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_KEYSIZES",__FUNCTION__, __LINE__);
-		PCARD_KEY_SIZES p = (PCARD_KEY_SIZES )pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
-		if (p->dwVersion != CARD_KEY_SIZES_CURRENT_VERSION && p->dwVersion != 0)
-			return ERROR_REVISION_MISMATCH;
-
-		p->dwIncrementalBitlen = 0;
-		
-		unsigned int key_size = NULL;
-		try
-		{
-			EstEIDManager estEIDManager(pCardData->hSCardCtx, pCardData->hScard);
-			key_size  = estEIDManager.getKeySize();
-		}
-		catch (runtime_error &err )
-		{
-			SCardLog::writeLog("[%s:%d][MD] runtime_error in CardReadFile '%s'",__FUNCTION__, __LINE__, err.what());
-			return SCARD_E_FILE_NOT_FOUND;
-		}
-		if (!key_size)
-			return SCARD_E_UNEXPECTED;
-
-		p->dwDefaultBitlen = key_size;
-		p->dwMaximumBitlen = key_size;
-		p->dwMinimumBitlen = key_size;
-		
-		return NO_ERROR;
+		PCARD_KEY_SIZES p = PCARD_KEY_SIZES(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
+		return CardQueryKeySizes(pCardData, dwFlags, 0, p);
 	}
-	if (wstring(CP_CARD_READ_ONLY) == wszProperty)
+	if (wcscmp(CP_CARD_READ_ONLY, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_READ_ONLY",__FUNCTION__, __LINE__);
-		BOOL *p = (BOOL*)pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
-		*p = TRUE; //HACK
-		return NO_ERROR;
+		PBOOL p = PBOOL(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
+		*p = TRUE;
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_CARD_CACHE_MODE) == wszProperty)
+	if (wcscmp(CP_CARD_CACHE_MODE, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_CACHE_MODE",__FUNCTION__, __LINE__);
-		DWORD *p = (DWORD *)pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
+		PDWORD p = PDWORD(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
 		*p = CP_CACHE_MODE_SESSION_ONLY;
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_SUPPORTS_WIN_X509_ENROLLMENT) == wszProperty)
+	if (wcscmp(CP_SUPPORTS_WIN_X509_ENROLLMENT, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_SUPPORTS_WIN_X509_ENROLLMENT",__FUNCTION__, __LINE__);
-		DWORD *p = (DWORD *)pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
+		PDWORD p = PDWORD(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
 		*p = 0;
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_CARD_GUID) == wszProperty)
+	if (wcscmp(CP_CARD_GUID, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_GUID",__FUNCTION__, __LINE__);
 		cardFiles *ptr = (cardFiles *)pCardData->pvVendorSpecific;
 		
 		try
@@ -672,11 +624,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 			EstEIDManager estEIDManager(pCardData->hSCardCtx, pCardData->hScard);
 			string id  = estEIDManager.readDocumentID();
 			if (id.length() < MIN_DOCUMENT_ID_LEN || id.length() > MAX_DOCUMENT_ID_LEN)
-			{
-				SCardLog::writeLog("[%s:%d][MD] Runtime_error in CardReadFile id.length() is %d",__FUNCTION__, __LINE__, id.length());
-				
-				return SCARD_E_FILE_NOT_FOUND;
-			}
+				RETURN(SCARD_E_FILE_NOT_FOUND);
 			SCardLog::writeLog("[%s:%d][MD] cardid: %s",__FUNCTION__, __LINE__, id.c_str());
 			memset(ptr->file_cardid,0, sizeof(ptr->file_cardid));
 			CopyMemory( ptr->file_cardid, id.c_str(), id.length());
@@ -684,26 +632,24 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 		catch (runtime_error &err )
 		{
 			SCardLog::writeLog("[%s:%d][MD] runtime_error in CardReadFile '%s'",__FUNCTION__, __LINE__, err.what());
-			return SCARD_E_FILE_NOT_FOUND;
+			RETURN(SCARD_E_FILE_NOT_FOUND);
 		}
-		if (pdwDataLen) *pdwDataLen = sizeof(ptr->file_cardid);
-		if (cbData < sizeof(ptr->file_cardid)) return SCARD_E_INSUFFICIENT_BUFFER;
-		CopyMemory(pbData,ptr->file_cardid,sizeof(ptr->file_cardid));
-		
-		return NO_ERROR;
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(ptr->file_cardid);
+		if (cbData < sizeof(ptr->file_cardid))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
+		CopyMemory(pbData, ptr->file_cardid, sizeof(ptr->file_cardid));
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_CARD_SERIAL_NO) == wszProperty)
+	if (wcscmp(CP_CARD_PIN_INFO, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_SERIAL_NO",__FUNCTION__, __LINE__);
-		return SCARD_E_INVALID_PARAMETER;
-	}
-	if (wstring(CP_CARD_PIN_INFO) == wszProperty)
-	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_PIN_INFO",__FUNCTION__, __LINE__);
-		PPIN_INFO p = (PPIN_INFO) pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
-		if (p->dwVersion != 6) return ERROR_REVISION_MISMATCH;
+		PPIN_INFO p = PPIN_INFO(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
+		if (p->dwVersion != PIN_INFO_CURRENT_VERSION)
+			RETURN(ERROR_REVISION_MISMATCH);
 		try
 		{
 			EstEIDManager estEIDManager(pCardData->hSCardCtx, pCardData->hScard);
@@ -723,7 +669,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 		{
 			SCardLog::writeLog("[%s:%d][MD] runtime_error in CardReadFile '%s'",__FUNCTION__, __LINE__, err.what());
 			
-			return SCARD_E_FILE_NOT_FOUND;
+			RETURN(SCARD_E_FILE_NOT_FOUND);
 		}
 		p->dwFlags = 0;
 		switch (dwFlags)
@@ -781,80 +727,55 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 				break;
 			default:
 				SCardLog::writeLog("[%s:%d][MD] Invalid Pin number %u requested",__FUNCTION__, __LINE__, dwFlags);
-				return SCARD_E_INVALID_PARAMETER;
+				RETURN(SCARD_E_INVALID_PARAMETER);
 		}
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_CARD_LIST_PINS) == wszProperty)
+	if (wcscmp(CP_CARD_LIST_PINS, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_LIST_PINS",__FUNCTION__, __LINE__);
-		PPIN_SET p = (PPIN_SET) pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
-		SET_PIN(*p,AUTH_PIN_ID);
-		SET_PIN(*p,SIGN_PIN_ID);
-		SET_PIN(*p,PUKK_PIN_ID);
-		return NO_ERROR;
+		PPIN_SET p = PPIN_SET(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
+		SET_PIN(*p, AUTH_PIN_ID);
+		SET_PIN(*p, SIGN_PIN_ID);
+		SET_PIN(*p, PUKK_PIN_ID);
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_CARD_AUTHENTICATED_STATE) == wszProperty)
+	if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_AUTHENTICATED_STATE",__FUNCTION__, __LINE__);
-		PPIN_SET p = (PPIN_SET) pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
-		return SCARD_E_INVALID_PARAMETER;
-	}
-	if (wstring(CP_CARD_PIN_STRENGTH_VERIFY) == wszProperty)
-	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_PIN_STRENGTH_VERIFY",__FUNCTION__, __LINE__);
-		if (dwFlags < AUTH_PIN_ID || dwFlags > PUKK_PIN_ID) return SCARD_E_INVALID_PARAMETER;
-		DWORD *p = (DWORD *)pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return SCARD_E_INSUFFICIENT_BUFFER;
+		if (dwFlags < AUTH_PIN_ID || dwFlags > SIGN_PIN_ID)
+			RETURN(SCARD_E_INVALID_PARAMETER);
+		PDWORD p = PDWORD(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
 		*p = CARD_PIN_STRENGTH_PLAINTEXT;
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_CARD_PIN_STRENGTH_CHANGE) == wszProperty)
+	if (wcscmp(CP_KEY_IMPORT_SUPPORT, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_PIN_STRENGTH_CHANGE",__FUNCTION__, __LINE__);
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
-	if (wstring(CP_CARD_PIN_STRENGTH_UNBLOCK) == wszProperty)
-	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CARD_PIN_STRENGTH_UNBLOCK",__FUNCTION__, __LINE__);
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
-
-	if (wstring(CP_KEY_IMPORT_SUPPORT) == wszProperty)
-	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_KEY_IMPORT_SUPPORT",__FUNCTION__, __LINE__);
-		DWORD *p = (DWORD *)pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
+		PDWORD p = PDWORD(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
 		*p = 0;
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_ENUM_ALGORITHMS) == wszProperty)
+	if (wcscmp(CP_PADDING_SCHEMES, wszProperty) == 0)
 	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_ENUM_ALGORITHMS",__FUNCTION__, __LINE__);
-		
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
-	if (wstring(CP_PADDING_SCHEMES) == wszProperty)
-	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_PADDING_SCHEMES",__FUNCTION__, __LINE__);
-		DWORD *p = (DWORD *)pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
+		PDWORD p = PDWORD(pbData);
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
 		*p = CARD_PADDING_NONE;
-		return NO_ERROR;
+		RETURN(NO_ERROR);
 	}
-	if (wstring(CP_CHAINING_MODES) == wszProperty)
-	{
-		SCardLog::writeLog("[%s:%d][MD] CardGetProperty: CP_CHAINING_MODES",__FUNCTION__, __LINE__);
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
-
-	SCardLog::writeLog("[%s:%d][MD] Fell through..",__FUNCTION__, __LINE__);
-	return SCARD_E_INVALID_PARAMETER;
+	RETURN(SCARD_E_UNSUPPORTED_FEATURE);
 }
 
 DWORD WINAPI CardSetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty, __in_bcount(cbDataLen) PBYTE pbData,
@@ -994,202 +915,10 @@ CardGetContainerInfo(__in PCARD_DATA  pCardData, __in BYTE bContainerIndex, __in
 
 DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData, __in LPWSTR pwszUserId, __in_bcount(cbPin) PBYTE pbPin, __in DWORD cbPin, __out_opt PDWORD pcAttemptsRemaining)
 {
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
 	SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: pwszUserId=%S",__FUNCTION__, __LINE__, NULLWSTR(pwszUserId));
-
-	BYTE remaining = 0,dummy = 0xFA;
-	try
-	{
-		EstEIDManager estEIDManager(pCardData->hSCardCtx, pCardData->hScard);
-
-		if(!estEIDManager.isSecureConnection())
-		{
-			if (NULL == pbPin) return SCARD_E_INVALID_PARAMETER;
-			if (NULL == pwszUserId) return SCARD_E_INVALID_PARAMETER;
-			if (wstring(wszCARD_USER_USER) != pwszUserId && wstring(wszCARD_USER_ADMIN) != pwszUserId)
-				return SCARD_E_INVALID_PARAMETER;
-
-			if (cbPin < 4 || cbPin > 12) return SCARD_W_WRONG_CHV;
-			if (wstring(wszCARD_USER_ADMIN) == pwszUserId)
-			{
-				return SCARD_W_WRONG_CHV;
-			}
-			char *pin = (char *)pbPin;
-			PinString tmp(pin , pin+cbPin );
-			BYTE ddd = tmp.at(cbPin-1);
-			if(ddd == 0x00)
-				return SCARD_W_WRONG_CHV;
-
-			if (pcAttemptsRemaining)
-			{
-				byte puk,pinSign;
-				estEIDManager.getRetryCounts(puk,remaining,pinSign);
-			}
-			try
-			{
-				estEIDManager.validateAuthPin(tmp,dummy);
-			}
-			catch (AuthError err)
-			{
-				if(NULL != pcAttemptsRemaining)
-				{
-					if(remaining > 0 && remaining < 4)
-						*pcAttemptsRemaining = remaining-1;
-					else
-						*pcAttemptsRemaining = 0x0;
-				}
-				SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: AuthError pcAttemptsRemaining=%i",__FUNCTION__, __LINE__, NULL == pcAttemptsRemaining ? 0 : *pcAttemptsRemaining);
-				if(err.SW1 == 0x69 && err.SW2 == 0x83)
-				{
-					SCardLog::writeLog("[%s:%d][MD] PIN code blocked",__FUNCTION__, __LINE__);
-					return SCARD_W_CHV_BLOCKED;
-				}
-				else if(err.SW1 == 0x63 && err.SW2 == 0x00)
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: PIN code blocked",__FUNCTION__, __LINE__);
-					return SCARD_W_CHV_BLOCKED;
-				}
-				else if(err.SW1 == 0x63 && err.SW2 == 0xC0)
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: PIN code blocked",__FUNCTION__, __LINE__);
-					return SCARD_W_CHV_BLOCKED;
-				}
-				else
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: PIN authentication error: %s",__FUNCTION__, __LINE__, err.what());
-					return SCARD_W_WRONG_CHV;
-				}
-			}
-			catch (runtime_error &er )
-			{
-				SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: Runtime error",__FUNCTION__, __LINE__, er.what());
-				return SCARD_W_WRONG_CHV;
-			}
-		}
-		else
-		{
-			if (NULL == pwszUserId) return SCARD_E_INVALID_PARAMETER;
-			if (wstring(wszCARD_USER_USER) != pwszUserId && wstring(wszCARD_USER_ADMIN) != pwszUserId)
-				return SCARD_E_INVALID_PARAMETER;
-			EXTERNAL_INFO externalInfo;
-			externalInfo.hwndParentWindow = cp;
-			externalInfo.pinType = 1;
-			HANDLE DialogThreadHandle;
-
-			try
-			{
-				PinString tmp = PinString("");
-				BYTE dummy = 0xFA;
-				
-				if(estEIDManager.isSecureConnection() == true)
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: Using secure connection to card",__FUNCTION__, __LINE__);
-				}
-				else
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: Secure connection is not used",__FUNCTION__, __LINE__);
-				}
-
-				const int BUFFER_SIZE = 512;
-				int lReturn = 0;
-				WCHAR wcBuffer[BUFFER_SIZE];
-				lReturn = GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SENGLANGUAGE, wcBuffer, BUFFER_SIZE);
-				if(std::wstring(wcBuffer) == std::wstring(L"Russian"))
-				{
-					estEIDManager.setReaderLanguageId(estEIDManager.RUS);
-					externalInfo.langId = estEIDManager.RUS;
-				}
-				else if(std::wstring(wcBuffer) == std::wstring(L"Estonian"))
-				{
-					estEIDManager.setReaderLanguageId(estEIDManager.EST);
-					externalInfo.langId = estEIDManager.EST;
-				}
-				else
-				{
-					estEIDManager.setReaderLanguageId(estEIDManager.ENG);
-					externalInfo.langId = estEIDManager.ENG;
-				}
-					bool authenticated = false;
-					bool blocked = false;
-					if(remaining == 0x00)
-					{
-						SCardLog::writeLog("[%s:%d][MD] PIN code blocked",__FUNCTION__, __LINE__);
-						MessageBox(NULL, L"PIN code blocked", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-						return SCARD_W_CHV_BLOCKED;
-					}
-					while(remaining != 0x00)
-					{
-						if(authenticated)
-							break;
-						try
-						{
-						DialogThreadHandle = CreateThread(NULL, 0, DialogThreadEntry, &externalInfo, 0, NULL);
-						estEIDManager.enterPin(EstEIDManager::PIN_AUTH, tmp, false);
-						TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
-						remaining = 0x03;
-						authenticated = true;
-					}
-					catch(AuthError)
-					{
-						SCardLog::writeLog("[%s:%d][MD] Wrong PIN presented %i attempts remaining",__FUNCTION__, __LINE__, 3-remaining);
-						MessageBox(cp, L"Wrong PIN presented.", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-						remaining--;
-					}
-					TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
-				}
-			}
-			catch (AuthError err)
-			{
-				TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
-				SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: AuthError",__FUNCTION__, __LINE__);
-				if(err.SW1 == 0x69 && err.SW2 == 0x83)
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: PIN code blocked",__FUNCTION__, __LINE__);
-					MessageBox(NULL, L"PIN code blocked", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-					return SCARD_W_CHV_BLOCKED;
-				}
-				else if(err.SW1 == 0x63 && err.SW2 == 0x00)
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: PIN code blocked",__FUNCTION__, __LINE__);
-					MessageBox(NULL, L"PIN code blocked", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-					return SCARD_W_CHV_BLOCKED;
-				}
-				else if(err.SW1 == 0x63 && err.SW2 == 0xC0)
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: PIN code blocked",__FUNCTION__, __LINE__);
-					MessageBox(NULL, L"PIN code blocked", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-					return SCARD_W_CHV_BLOCKED;
-				}
-				else if(err.SW1 == 0x63)
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: Wrong PIN presented",__FUNCTION__, __LINE__);
-					MessageBox(cp, L"Wrong PIN presented", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-					return SCARD_W_WRONG_CHV;
-				}
-				else
-				{
-					SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: PIN authentication error: %s",__FUNCTION__, __LINE__, err.what());
-					MessageBox(NULL, L"PIN authentication error", L"Authentication error", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
-					return SCARD_W_WRONG_CHV;
-				}
-			}
-			catch (runtime_error &er )
-			{
-				TerminateThread(DialogThreadHandle, ERROR_SUCCESS);
-				SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: Runtime error",__FUNCTION__, __LINE__, er.what());
-				return SCARD_W_WRONG_CHV;
-			}
-		}
-	}
-	catch (runtime_error &ex)
-	{
-		if (pcAttemptsRemaining)
-			*pcAttemptsRemaining = remaining - 1;
-		SCardLog::writeLog("[%s:%d][MD] CardAuthenticatePin: Exception %s",__FUNCTION__, __LINE__, ex.what());
-		return SCARD_W_WRONG_CHV;
-	}
-	
-	return NO_ERROR;
+	if (!pwszUserId || wcscmp(pwszUserId, wszCARD_USER_USER) != 0 || !pbPin)
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	return CardAuthenticateEx(pCardData, AUTH_PIN_ID, CARD_PIN_SILENT_CONTEXT, pbPin, cbPin, nullptr, nullptr, pcAttemptsRemaining);
 }
 
 DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __in DWORD dwFlags, __in PBYTE pbPinData, __in DWORD cbPinData,
@@ -2410,8 +2139,16 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData, __deref_out_bcount(*pcb
 	return NO_ERROR;
 }
 
-DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData, __in DWORD dwFlags, __in PIN_ID dwAuthenticatingPinId,__in_bcount(cbAuthenticatingPinData) PBYTE pbAuthenticatingPinData,
-    __in DWORD cbAuthenticatingPinData, __in PIN_ID dwTargetPinId, __in_bcount(cbTargetData)PBYTE pbTargetData, __in DWORD cbTargetData, __in DWORD cRetryCount,
+
+DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData, __in LPWSTR pwszUserId, __in_bcount(cbCurrentAuthenticator)PBYTE pbCurrentAuthenticator, __in DWORD cbCurrentAuthenticator,
+	__in_bcount(cbNewAuthenticator)PBYTE pbNewAuthenticator, __in DWORD cbNewAuthenticator, __in DWORD cRetryCount, __in DWORD dwFlags, __out_opt PDWORD pcAttemptsRemaining)
+{
+	SCardLog::writeLog("[%s:%d][MD] CardChangeAuthenticator. Running in %s mode", __FUNCTION__, __LINE__, TestMode == true ? "TEST MODE" : "USER MODE");
+	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_UNBLOCK | CARD_PIN_SILENT_CONTEXT, ROLE_ADMIN, pbCurrentAuthenticator, cbCurrentAuthenticator, ROLE_USER, pbNewAuthenticator, cbNewAuthenticator, cRetryCount, pcAttemptsRemaining);
+}
+
+DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData, __in DWORD dwFlags, __in PIN_ID dwAuthenticatingPinId, __in_bcount(cbAuthenticatingPinData) PBYTE pbAuthenticatingPinData,
+	__in DWORD cbAuthenticatingPinData, __in PIN_ID dwTargetPinId, __in_bcount(cbTargetData)PBYTE pbTargetData, __in DWORD cbTargetData, __in DWORD cRetryCount,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
 	if(!pCardData)
@@ -2542,106 +2279,6 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData, __in DWORD dwF
 	{
 		return SCARD_E_INVALID_PARAMETER;
 	}
-	return NO_ERROR;
-}
-
-DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData, 
-									 __in LPWSTR pwszUserId, 
-									 __in_bcount(cbCurrentAuthenticator)PBYTE pbCurrentAuthenticator, 
-									 __in DWORD cbCurrentAuthenticator,
-									__in_bcount(cbNewAuthenticator)PBYTE pbNewAuthenticator, 
-									__in DWORD cbNewAuthenticator, 
-									__in DWORD cRetryCount, 
-									__in DWORD dwFlags, 
-									__out_opt PDWORD pcAttemptsRemaining)
-{
-	SCardLog::writeLog("[%s:%d][MD] CardChangeAuthenticator. Running in %s mode",__FUNCTION__, __LINE__, TestMode == true ? "TEST MODE" : "USER MODE");
-
-	if(TestMode == true)
-	{
-		SCardLog::writeLog("[%s:%d][MD] This feature is not supported in test mode: ",__FUNCTION__, __LINE__);
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
-	if(!pCardData)
-		return SCARD_E_INVALID_PARAMETER;
-	if(!pwszUserId)
-		return SCARD_E_INVALID_PARAMETER;
-	if(!pbCurrentAuthenticator)
-		return SCARD_E_INVALID_PARAMETER;
-	if(NULL == cbCurrentAuthenticator && wcscmp(pwszUserId, wszCARD_USER_ADMIN) != 0)
-		return SCARD_E_INVALID_PARAMETER;
-	if(!pbNewAuthenticator)
-		return SCARD_E_INVALID_PARAMETER;
-	if(NULL == cbNewAuthenticator)
-		return SCARD_E_INVALID_PARAMETER;
-	if(wcscmp(pwszUserId, wszCARD_USER_USER) != 0 && wcscmp(pwszUserId, wszCARD_USER_ADMIN) != 0)
-		return SCARD_E_INVALID_PARAMETER;
-
-	if(dwFlags == CARD_AUTHENTICATE_PIN_PIN)
-	{
-		SCardLog::writeLog("[%s:%d][MD] Changing PIN code using CARD_AUTHENTICATE_PIN_PIN",__FUNCTION__, __LINE__);
-		PinString oldPin((char *)pbCurrentAuthenticator, (size_t)cbCurrentAuthenticator);
-		PinString newPin((char *)pbNewAuthenticator, (size_t)cbNewAuthenticator);
-		byte auth, sign, puk = 0;
-		try
-		{
-			EstEIDManager estEIDManager(pCardData->hSCardCtx, pCardData->hScard);
-			byte retriesLeft = 0x03;
-			estEIDManager.isSecureConnection();
-			if (NULL != pcAttemptsRemaining)
-			{
-				estEIDManager.getRetryCounts(puk,auth,sign);
-			}
-			estEIDManager.changeAuthPin(newPin, oldPin, retriesLeft);
-		}
-		catch (AuthError &err)
-		{
-			if(NULL != pcAttemptsRemaining)
-			{
-				if(auth > 0 && auth < 4)
-					*pcAttemptsRemaining = auth-1;
-				else
-					*pcAttemptsRemaining = 0x0;
-			}
-			SCardLog::writeLog("[%s:%d][MD] AuthError pcAttemptsRemaining=%i",__FUNCTION__, __LINE__, NULL == pcAttemptsRemaining ? 0 : *pcAttemptsRemaining);
-			if(err.SW1 == 0x69 && err.SW2 == 0x83)
-			{
-				SCardLog::writeLog("[%s:%d][MD] PIN code blocked",__FUNCTION__, __LINE__);
-				return SCARD_W_CHV_BLOCKED;
-			}
-			else if(err.SW1 == 0x63 && err.SW2 == 0x00)
-			{
-				SCardLog::writeLog("[%s:%d][MD] PIN code blocked",__FUNCTION__, __LINE__);
-				return SCARD_W_CHV_BLOCKED;
-			}
-			else if(err.SW1 == 0x63 && err.SW2 == 0xC0)
-			{
-				SCardLog::writeLog("[%s:%d][MD] PIN code blocked",__FUNCTION__, __LINE__);
-				return SCARD_W_CHV_BLOCKED;
-			}
-			else
-			{
-				SCardLog::writeLog("[%s:%d][MD] PIN authentication error: %s",__FUNCTION__, __LINE__, err.what());
-				return SCARD_W_WRONG_CHV;
-			}
-		}
-		catch (runtime_error &ex)
-		{
-			SCardLog::writeLog("[%s:%d][MD] Runtime_error exception thrown:",__FUNCTION__, __LINE__, ex.what());
-			return SCARD_E_UNEXPECTED;
-		}
-	}
-	else if(dwFlags == CARD_AUTHENTICATE_PIN_CHALLENGE_RESPONSE)
-	{
-		SCardLog::writeLog("[%s:%d][MD] Changing PIN code using CARD_AUTHENTICATE_PIN_CHALLENGE_RESPONSE",__FUNCTION__, __LINE__);
-		return SCARD_W_WRONG_CHV;
-	}
-	else
-	{
-		SCardLog::writeLog("[%s:%d][MD] Changing PIN code using UNSUPPORTED FEATURE 0x%08X",__FUNCTION__, __LINE__, dwFlags);
-		return SCARD_E_INVALID_PARAMETER;
-	}
-
 	return NO_ERROR;
 }
 
