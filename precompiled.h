@@ -32,10 +32,16 @@
 // Windows Header Files:
 #include <windows.h>
 #include <WinBase.h>
+#include <Winsock2.h>
 #include <Commctrl.h>
 #include <Shellapi.h>
 #include "cardmod.h"
 #include <algorithm>
+#include <io.h>
+#include <iomanip>
+#include <map>
+#include <sstream>
+#include <vector>
 
 // common controls
 #if defined _M_IX86

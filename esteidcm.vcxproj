@@ -70,24 +70,22 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)\smartcardpp;C:\OpenSSL-Win32\include;C:\Program Files (x86)\Microsoft CNG Development Kit\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;winscard.lib;$(SolutionDir)\$(Configuration)\smartcardpp.lib;bcrypt.lib;version.lib;comctl32.lib;crypt32.lib;C:\OpenSSL-Win32\lib\VC\static\libeay32MD.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winscard.lib;comctl32.lib;crypt32.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\esteidcm.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)\smartcardpp;C:\OpenSSL-Win64\include;C:\Program Files (x86)\Microsoft CNG Development Kit\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;winscard.lib;$(SolutionDir)$(Platform)\$(Configuration)\smartcardpp.lib;bcrypt.lib;version.lib;comctl32.lib;crypt32.lib;C:\OpenSSL-Win64\lib\VC\static\libeay32MD.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winscard.lib;comctl32.lib;crypt32.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\esteidcm.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -95,13 +93,12 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)\smartcardpp;C:\OpenSSL-Win32\include;C:\Program Files (x86)\Microsoft CNG Development Kit\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;winscard.lib;$(SolutionDir)\$(Configuration)\smartcardpp.lib;bcrypt.lib;version.lib;comctl32.lib;crypt32.lib;C:\OpenSSL-Win32\lib\VC\static\libeay32MDd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winscard.lib;comctl32.lib;crypt32.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\esteidcm.def</ModuleDefinitionFile>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -111,26 +108,18 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)\smartcardpp;C:\OpenSSL-Win32\include;C:\Program Files (x86)\Microsoft CNG Development Kit\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;winscard.lib;$(SolutionDir)$(Platform)\$(Configuration)\smartcardpp.lib;bcrypt.lib;version.lib;comctl32.lib;crypt32.lib;C:\OpenSSL-Win64\lib\VC\static\libeay32MDd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winscard.lib;comctl32.lib;crypt32.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\esteidcm.def</ModuleDefinitionFile>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ProjectReference Include="smartcardpp.vcxproj">
-      <Project>{badfc33c-025a-4a03-857f-2c3e3abb2e15}</Project>
-      <CopyLocalSatelliteAssemblies>true</CopyLocalSatelliteAssemblies>
-      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-    </ProjectReference>
-  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="esteidcm.cpp" />
     <ClCompile Include="precompiled.cpp" />
