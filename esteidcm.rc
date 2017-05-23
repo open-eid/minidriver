@@ -13,13 +13,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
+// English (United States) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
-#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -45,18 +43,16 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-#endif    // English (U.S.) resources
+#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Estonian resources
+// Estonian (Estonia) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ETI)
-#ifdef _WIN32
 LANGUAGE LANG_ESTONIAN, SUBLANG_DEFAULT
 #pragma code_page(1257)
-#endif //_WIN32
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -64,8 +60,8 @@ LANGUAGE LANG_ESTONIAN, SUBLANG_DEFAULT
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,7,0,0
- PRODUCTVERSION 3,7,0,0
+ FILEVERSION FILE_VERSION
+ PRODUCTVERSION PRODUCT_VERSION
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -80,13 +76,14 @@ BEGIN
     BEGIN
         BLOCK "042504b0"
         BEGIN
+            VALUE "CompanyName", "RIA"
             VALUE "FileDescription", "esteidcm Dynamic Link Library"
-            VALUE "FileVersion", "3.7.0.0"
+            VALUE "FileVersion", FILE_VERSION_STR
             VALUE "InternalName", "esteidcm"
-            VALUE "LegalCopyright", "Copyright (C) 2012"
+            VALUE "LegalCopyright", "(C) 2012-2017 Estonian Information System Authority"
             VALUE "OriginalFilename", "esteidcm.dll"
-            VALUE "ProductName", " esteidcm Dynamic Link Library"
-            VALUE "ProductVersion", "3.7.0.0"
+            VALUE "ProductName", "esteidcm Dynamic Link Library"
+            VALUE "ProductVersion", PRODUCT_VERSION_STR
         END
     END
     BLOCK "VarFileInfo"
@@ -95,7 +92,7 @@ BEGIN
     END
 END
 
-#endif    // Estonian resources
+#endif    // Estonian (Estonia) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

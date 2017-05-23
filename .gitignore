@@ -1,0 +1,5 @@
+*Debug/
+*Release/
+Package/
+*.zip
+*sdf
