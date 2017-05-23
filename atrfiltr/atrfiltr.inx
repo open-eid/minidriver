@@ -1,0 +1,47 @@
+; atrfiltr.inf
+
+;
+; To create an installation application that will add this service as an upper filter for
+; all smartcard readers {50DD5230-BA8A-11D1-BF5D-0000F805F530}:
+;
+;   http://msdn.microsoft.com/en-us/library/ms791322.aspx
+;
+;
+; To manually add driver service:
+;
+;   sc create atrfiltr binPath= system32\drivers\atrfiltr.sys type= kernel start= demand error= normal
+;
+;   Add atrfiltr to this registry value:
+;       HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\{50DD5230-BA8A-11D1-BF5D-0000F805F530}\UpperFilters"
+
+[DestinationDirs]
+atrfiltr_copyfiles = 12
+
+[atrfiltr_inst]
+CopyFiles = atrfiltr_copyfiles
+AddReg = atrfiltr_addreg
+
+[atrfiltr_copyfiles]
+atrfiltr.sys
+
+[atrfiltr_addreg]
+; append this service to existing REG_MULTI_SZ list, if any
+HKR,,"UpperFilters",0x00010008,"atrfiltr" 
+
+[atrfiltr_inst.Services]
+AddService = upperfilt,,atrfiltr_service
+
+[atrfiltr_service]
+DisplayName   = %atrfiltr_ServiceDesc%
+ServiceType   = 1   ; SERVICE_KERNEL_DRIVER
+StartType     = 3   ; SERVICE_DEMAND_START
+ErrorControl  = 1   ; SERVICE_ERROR_NORMAL
+ServiceBinary = %12%\atrfiltr.sys
+
+[Strings]
+;
+;Localizable
+;
+atrfiltr_ServiceDesc = "ATR Filter Driver"
+
+
