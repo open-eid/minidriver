@@ -1,72 +1,70 @@
 <CMCKConfig>
-    
-  <Version>2</Version>
-    
-  <CardDefaults>
-    <DefaultPins>
+  <V5>
+    <Version>1</Version>
+    <CardDefaults>
+      <DefaultPins>
         <PinEntry>
-            <RoleID>1</RoleID> <!-- authentication/ROLE_USER -->
-            <Type>AlphaNumericPinType</Type> 
-            <Value>0x37 0x37 0x33 0x36</Value>
-            <Blocking>True</Blocking>
-            <AllowZeroLength>False</AllowZeroLength>
+          <RoleID>1</RoleID> <!-- authentication/ROLE_USER -->
+          <Type>AlphaNumericPinType</Type>
+          <Value>0x30 0x30 0x39 0x30</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
         <PinEntry>
-            <RoleID>2</RoleID>   <!-- PUK-ADMIN/ROLE_ADMIN -->
-            <Type>EmptyPinType</Type>
-            <Value>0x33 0x30 0x37 0x30 0x37 0x33 0x31 0x32</Value>
-            <Blocking>True</Blocking>
-            <AllowZeroLength>True</AllowZeroLength>
+          <RoleID>2</RoleID>   <!-- PUK-ADMIN/ROLE_ADMIN -->
+          <Type>EmptyPinType</Type>
+          <Value>0x31 0x37 0x32 0x35 0x38 0x34 0x30 0x33</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
         <PinEntry>
-            <RoleID>3</RoleID>  <!-- signature -->
-            <Type>AlphaNumericPinType</Type>
-            <Value>0x39 0x32 0x34 0x36 0x38</Value>
-            <Blocking>True</Blocking>
-            <AllowZeroLength>False</AllowZeroLength>
+          <RoleID>3</RoleID>  <!-- signature -->
+          <Type>AlphaNumericPinType</Type>
+          <Value>0x30 0x31 0x34 0x39 0x37</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
         <PinEntry>
-            <RoleID>4</RoleID>
-            <Type>EmptyPinType</Type>
-            <Value></Value>
-            <Blocking>True</Blocking>
-            <AllowZeroLength>False</AllowZeroLength>
+          <RoleID>4</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
         <PinEntry>
-            <RoleID>5</RoleID>
-            <Type>EmptyPinType</Type>
-            <Value></Value>
-            <Blocking>True</Blocking>
-            <AllowZeroLength>False</AllowZeroLength>
+          <RoleID>5</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
         <PinEntry>
-            <RoleID>6</RoleID>
-            <Type>EmptyPinType</Type>
-            <Value></Value>
-            <Blocking>True</Blocking>
-            <AllowZeroLength>False</AllowZeroLength>
+          <RoleID>6</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
         <PinEntry>
-            <RoleID>6</RoleID>
-            <Type>EmptyPinType</Type>
-            <Value></Value>
-            <Blocking>True</Blocking>
-            <AllowZeroLength>False</AllowZeroLength>
+          <RoleID>6</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
-    </DefaultPins>
-
-    <CardSupports>
-        <MinimumVersion>6</MinimumVersion>
-        <CurrentVersion>6</CurrentVersion>
+      </DefaultPins>
+      <CardSupports>
+        <MinimumVersion>7</MinimumVersion>
+        <CurrentVersion>7</CurrentVersion>
         <LoadingUnderCAPI>True</LoadingUnderCAPI>
         <LoadingUnderCNG>True</LoadingUnderCNG>
-        <KeyImport>True</KeyImport>
+        <KeyImport>False</KeyImport>
         <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE</KeyTypes>
         <OnCardPadding>False</OnCardPadding>
         <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
-        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1</SignHashAlgorithms>
+        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
         <SignHashFlags></SignHashFlags>
-        <SignReturnBufferSize>True</SignReturnBufferSize>        
+        <SignReturnBufferSize>True</SignReturnBufferSize>
         <KDFTypes>HASH</KDFTypes>
         <KDFHashAlgorithms>SHA1</KDFHashAlgorithms>
         <KDFHMACflag>False</KDFHMACflag>
@@ -78,31 +76,210 @@
         <SupportsCardChangeAuthenticatorEx>False</SupportsCardChangeAuthenticatorEx>
         <SupportsCardConstructDHAgreement>False</SupportsCardConstructDHAgreement>
         <SupportsCardDestroyDHAgreement>False</SupportsCardDestroyDHAgreement>
-    </CardSupports>
-  </CardDefaults>
-
-  <TestSuiteDefaults>
+      </CardSupports>
+    </CardDefaults>
+    <TestSuiteDefaults>
+      <INF>
+        <INFFile>C:\SmartcardMinidriverTest\esteidcm.inf</INFFile>
+      </INF>
       <Logging>
-          <LogFile>CMCK_log.xml</LogFile>
-          <LogToConsole>True</LogToConsole>
+        <LogFile>CMCK_log.xml</LogFile>
+        <LogToConsole>True</LogToConsole>
       </Logging>
-
       <TestParams>
-          <TestParam>
-              <Test>MultiThreaded</Test>
-              <Name>t</Name>
-              <Value>5</Value>
-          </TestParam>
-          <TestParam>
-              <Test>MultiThreaded</Test>
-              <Name>n</Name>
-              <Value>5</Value>
-          </TestParam>
-          <TestParam>
-              <Test>NonRepeatingChallenge</Test>
-              <Name>n</Name>
-              <Value>300</Value>
-          </TestParam>
+        <TestParam>
+          <Test>MultiThreaded</Test>
+          <Name>t</Name>
+          <Value>5</Value>
+        </TestParam>
+        <TestParam>
+          <Test>MultiThreaded</Test>
+          <Name>n</Name>
+          <Value>5</Value>
+        </TestParam>
+        <TestParam>
+          <Test>NonRepeatingChallenge</Test>
+          <Name>n</Name>
+          <Value>300</Value>
+        </TestParam>
       </TestParams>
-  </TestSuiteDefaults>
+    </TestSuiteDefaults>
+  </V5>
+  <V6>
+    <Version>2</Version>
+    <CardDefaults>
+      <DefaultPins>
+        <PinEntry>
+          <RoleID>1</RoleID> <!-- authentication/ROLE_USER -->
+          <Type>AlphaNumericPinType</Type>
+          <Value>0x30 0x30 0x39 0x30</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+          <RoleID>2</RoleID>   <!-- PUK-ADMIN/ROLE_ADMIN -->
+          <Type>EmptyPinType</Type>
+          <Value>0x31 0x37 0x32 0x35 0x38 0x34 0x30 0x33</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+          <RoleID>3</RoleID>  <!-- signature -->
+          <Type>AlphaNumericPinType</Type>
+          <Value>0x30 0x31 0x34 0x39 0x37</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+          <RoleID>4</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+          <RoleID>5</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+          <RoleID>6</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+          <RoleID>6</RoleID>
+          <Type>EmptyPinType</Type>
+          <Value></Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+      </DefaultPins>
+      <CardSupports>
+        <MinimumVersion>7</MinimumVersion>
+        <CurrentVersion>7</CurrentVersion>
+        <LoadingUnderCAPI>True</LoadingUnderCAPI>
+        <LoadingUnderCNG>True</LoadingUnderCNG>
+        <KeyImport>False</KeyImport>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE</KeyTypes>
+        <OnCardPadding>False</OnCardPadding>
+        <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
+        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
+        <SignHashFlags></SignHashFlags>
+        <SignReturnBufferSize>True</SignReturnBufferSize>
+        <KDFTypes>HASH</KDFTypes>
+        <KDFHashAlgorithms>SHA1</KDFHashAlgorithms>
+        <KDFHMACflag>False</KDFHMACflag>
+        <SupportsCardGetChallenge>False</SupportsCardGetChallenge>
+        <SupportsCardAuthenticateChallenge>False</SupportsCardAuthenticateChallenge>
+        <SupportsCardGetChallengeEx>False</SupportsCardGetChallengeEx>
+        <SupportsCardUnblockPin>False</SupportsCardUnblockPin>
+        <SupportsCardChangeAuthenticator>False</SupportsCardChangeAuthenticator>
+        <SupportsCardChangeAuthenticatorEx>False</SupportsCardChangeAuthenticatorEx>
+        <SupportsCardConstructDHAgreement>False</SupportsCardConstructDHAgreement>
+        <SupportsCardDestroyDHAgreement>False</SupportsCardDestroyDHAgreement>
+      </CardSupports>
+    </CardDefaults>
+    <TestSuiteDefaults>
+      <INF>
+        <INFFile>C:\SmartcardMinidriverTest\esteidcm.inf</INFFile>
+      </INF>
+      <Logging>
+        <LogFile>CMCK_log.xml</LogFile>
+        <LogToConsole>True</LogToConsole>
+      </Logging>
+      <TestParams>
+        <TestParam>
+          <Test>MultiThreaded</Test>
+          <Name>t</Name>
+          <Value>5</Value>
+        </TestParam>
+        <TestParam>
+          <Test>MultiThreaded</Test>
+          <Name>n</Name>
+          <Value>5</Value>
+        </TestParam>
+        <TestParam>
+          <Test>NonRepeatingChallenge</Test>
+          <Name>n</Name>
+          <Value>300</Value>
+        </TestParam>
+      </TestParams>
+    </TestSuiteDefaults>
+  </V6>
+  <V7>
+    <Version>2</Version>
+    <CardDefaults>
+      <DefaultPins>
+        <PinEntry>
+          <RoleID>1</RoleID> <!-- authentication/ROLE_USER -->
+          <Type>AlphaNumericPinType</Type>
+          <Value>0x30 0x30 0x39 0x30</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
+          <RoleID>3</RoleID>  <!-- signature -->
+          <Type>AlphaNumericPinType</Type>
+          <Value>0x30 0x31 0x34 0x39 0x37</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+      </DefaultPins>
+      <CardSupports>
+        <MinimumVersion>7</MinimumVersion>
+        <CurrentVersion>7</CurrentVersion>
+        <LoadingUnderCAPI>True</LoadingUnderCAPI>
+        <LoadingUnderCNG>True</LoadingUnderCNG>
+        <KeyImport>False</KeyImport>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE</KeyTypes>
+        <OnCardPadding>False</OnCardPadding>
+        <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
+        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
+        <SignHashFlags></SignHashFlags>
+        <SignReturnBufferSize>True</SignReturnBufferSize>
+        <KDFTypes>HASH</KDFTypes>
+        <KDFHashAlgorithms>SHA1</KDFHashAlgorithms>
+        <KDFHMACflag>False</KDFHMACflag>
+        <SupportsCardGetChallenge>False</SupportsCardGetChallenge>
+        <SupportsCardAuthenticateChallenge>False</SupportsCardAuthenticateChallenge>
+        <SupportsCardGetChallengeEx>False</SupportsCardGetChallengeEx>
+        <SupportsCardUnblockPin>False</SupportsCardUnblockPin>
+        <SupportsCardChangeAuthenticator>False</SupportsCardChangeAuthenticator>
+        <SupportsCardChangeAuthenticatorEx>False</SupportsCardChangeAuthenticatorEx>
+        <SupportsCardConstructDHAgreement>False</SupportsCardConstructDHAgreement>
+        <SupportsCardDestroyDHAgreement>False</SupportsCardDestroyDHAgreement>
+      </CardSupports>
+    </CardDefaults>
+    <TestSuiteDefaults>
+      <INF>
+        <INFFile>C:\SmartcardMinidriverTest\esteidcm.inf</INFFile>
+      </INF>
+      <Logging>
+        <LogFile>CMCK_log.xml</LogFile>
+        <LogToConsole>True</LogToConsole>
+      </Logging>
+      <TestParams>
+        <TestParam>
+          <Test>MultiThreaded</Test>
+          <Name>t</Name>
+          <Value>5</Value>
+        </TestParam>
+        <TestParam>
+          <Test>MultiThreaded</Test>
+          <Name>n</Name>
+          <Value>5</Value>
+        </TestParam>
+        <TestParam>
+          <Test>NonRepeatingChallenge</Test>
+          <Name>n</Name>
+          <Value>300</Value>
+        </TestParam>
+      </TestParams>
+    </TestSuiteDefaults>
+  </V7>
 </CMCKConfig>

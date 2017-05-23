@@ -1,1 +1,0 @@
-rundll32 setupapi.dll,InstallHinfSection DefaultUninstall 132 .\esteidcm_x86.inf

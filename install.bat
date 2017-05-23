@@ -1,0 +1,1 @@
+rundll32 syssetup,SetupInfObjectInstallAction DefaultInstall 128 .\esteidcm.inf

@@ -20,7 +20,7 @@
 #ifndef _ESTEIDCM_H_
 #define _ESTEIDCM_H_
 
-#include <cardmod.h>
+#include "cardmod.h"
 #include <stdio.h>
 #include <time.h>
 #include <minmax.h>

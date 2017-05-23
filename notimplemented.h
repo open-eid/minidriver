@@ -13,7 +13,6 @@
 #ifndef _NOTIMPLEMENTED_H_
 #define _NOTIMPLEMENTED_H_
 
-#include <cardmod.h>
 #include "esteidcm.h"
 
 

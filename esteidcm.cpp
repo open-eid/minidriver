@@ -38,8 +38,6 @@ LPCTSTR subKey = TEXT("Software\\SK\\EstEIDMinidriver");
 
 #define DEFUN(a) a
 
-#pragma comment(lib,"crypt32.lib")
-
 typedef struct _BCRYPT_PKCS1_PADDING_INFO_adhoc
 {
   LPCWSTR pszAlgId;
