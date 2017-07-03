@@ -18,12 +18,18 @@
     <Property Id="SCPNPENTRY">
       <RegistrySearch Id="ScPnP" Root="HKLM" Key="SOFTWARE\Policies\Microsoft\Windows\ScPnP" Name="EnableScPnP" Type="raw"/>
     </Property>
+    <!-- detect Windows 10 -->
     <Property Id="USER32VERSION">
         <DirectorySearch Id="SystemFolderDriverVersion" Path="[SystemFolder]">
             <FileSearch Name="user32.dll" MinVersion="10.0.0.0"/>
         </DirectorySearch>
     </Property>
     <Directory Id="TARGETDIR" Name="SourceDir">
+      <!-- installing 32-bit part of ATR records on both 64-bit and 32-bit machines -->
+      <Component Id="RemoveMinidriverRegistrationComponentX86" Guid="4EEC213A-7D2C-4062-9EEF-BA18BFEB7F12" Win64="no" Transitive="yes">
+        <Condition><![CDATA[NOT Installed]]></Condition>
+        <?include minidriver_registry_cleanup.wxi?>
+      </Component>
 <?if $(var.Platform) = "x64" ?>
       <!-- installing 64-bit part of ATR records on 64-bit machine -->
       <Component Id="RemoveMinidriverRegistrationComponentX64" Guid="B0DFF274-B96A-48f1-89F1-400A271770DB" Win64="yes" Transitive="yes">
@@ -37,22 +43,15 @@
                        Name="EnableScPnP" Action="write" Type="integer" Value="1"/>
       </Component>
 <?endif ?>
-
       <Component Id="EnableScPnP32" Guid="4aac3a1c-2103-4e33-bcbf-8c354e7a8883">
         <Condition><![CDATA[SCPNPENTRY = "#0"]]></Condition>
         <RegistryValue Root="HKLM" Key="SOFTWARE\Policies\Microsoft\Windows\ScPnP"
                        Name="EnableScPnP" Action="write" Type="integer" Value="1"/>
       </Component>
 
-      <!-- installing 32-bit part of ATR records on both 64-bit and 32-bit machines -->
-      <Component Id="RemoveMinidriverRegistrationComponentX86" Guid="4EEC213A-7D2C-4062-9EEF-BA18BFEB7F12" Win64="no" Transitive="yes">
-        <Condition><![CDATA[NOT Installed]]></Condition>
-        <?include minidriver_registry_cleanup.wxi?>
-      </Component>
-
-      <!-- Restart Smart Card service -->
+      <!-- Restart Smart Card service, to enable upper filter "atrfiltr" -->
       <Component Id="SCardSvrStart" Guid="{0AFDDA6E-A145-40B6-8ABD-FE502FD9C31D}" KeyPath="yes">
-        <ServiceControl Id="SCardSvrStart" Name="SCardSvr" Start="install" Stop="both" Wait="no"/>
+        <ServiceControl Id="SCardSvrStart" Name="SCardSvr" Start="both" Stop="both" Wait="no"/>
       </Component>
       <Component Id="CertPropSvcStart" Guid="{4BF6CF46-3AC5-4B5A-A698-6B7BB0584800}" KeyPath="yes">
         <ServiceControl Id="CertPropSvcStart" Name="CertPropSvc" Start="install" Stop="both" Wait="no"/>
@@ -141,6 +140,13 @@
         </Directory>
       </Directory>
     </Directory>
+
+    <!-- Enable Smart Card service, Windows 8/8.1/10 it is disabled by default, when no reader is connected -->
+    <CustomAction Id="EnableScSrv" Directory="APPLICATIONFOLDER" Execute="deferred" Impersonate="no" HideTarget="yes" Return="ignore"
+       ExeCommand='[SystemFolder]\\cmd.exe /c "sc config SCardSvr start= auto"' />
+    <InstallExecuteSequence>
+        <Custom Action="EnableScSrv" Before="StartServices">NOT Installed</Custom>
+    </InstallExecuteSequence>
 
     <?if $(var.Platform) = "x64" ?>
     <!-- Force install on X64 Windows. "on demand" install smartcard driver does not work on Terminals. X32 has side effects with WIX burn -->
