@@ -117,6 +117,7 @@ typedef struct
 
 struct Files
 {
+	bool pinpadEnabled;
 	BYTE cardid[16];
 	PCCERT_CONTEXT auth, sign;
 };
@@ -370,6 +371,15 @@ static map<uint8_t, vector<byte>> parseFCI(const vector<byte> &data)
 	return result;
 }
 
+static bool isPinPad(PCARD_DATA pCardData)
+{
+	Files *files = (Files*)pCardData->pvVendorSpecific;
+	if (!files->pinpadEnabled)
+		return false;
+	map<DRIVER_FEATURES, uint32_t> f = features(pCardData->hScard);
+	return f.find(FEATURE_VERIFY_PIN_DIRECT) != f.cend() || f.find(FEATURE_VERIFY_PIN_START) != f.cend();
+}
+
 DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
 {
 	EXTERNAL_INFO *externalInfo = PEXTERNAL_INFO(lpParam);
@@ -545,11 +555,24 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	Files *files = (Files*)(pCardData->pvVendorSpecific = pCardData->pfnCspAlloc(sizeof(Files)));
 	if (!pCardData->pvVendorSpecific)
 		RETURN(ERROR_NOT_ENOUGH_MEMORY);
+	files->pinpadEnabled = true;
 	files->auth = CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, auth.data(), DWORD(auth.size()));
 	files->sign = CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, sign.data(), DWORD(sign.size()));
 	if (!files->auth || !files->sign)
 		RETURN(ERROR_NOT_ENOUGH_MEMORY);
 	memcpy(files->cardid, cardid.c_str(), cardid.size());
+
+	HKEY rootKey = nullptr;
+	LPCTSTR subKey = L"SOFTWARE\\RIA\\minidriver";
+	CHAR lpData[1024];
+	DWORD lpSize = sizeof(lpData);
+	DWORD dwType = 0;
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subKey, NULL, KEY_READ, &rootKey) == ERROR_SUCCESS &&
+		RegQueryValueEx(rootKey, L"disablepinpad", NULL, &dwType, (LPBYTE)&lpData, &lpSize) == ERROR_SUCCESS)
+	{
+		files->pinpadEnabled = false;
+		_log("Disabling pinpad by registry setting");
+	}
 
 	pCardData->pfnCardDeleteContext = CardDeleteContext;
 	pCardData->pfnCardQueryCapabilities = CardQueryCapabilities;
@@ -755,12 +778,10 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 			RETURN(SCARD_E_INSUFFICIENT_BUFFER);
 		if (p->dwVersion != PIN_INFO_CURRENT_VERSION)
 			RETURN(ERROR_REVISION_MISMATCH);
-		map<DRIVER_FEATURES, uint32_t> f = features(pCardData->hScard);
-		bool isPinPad = f.find(FEATURE_VERIFY_PIN_DIRECT) != f.cend() || f.find(FEATURE_VERIFY_PIN_START) != f.cend();
 		p->dwFlags = 0;
 		p->dwChangePermission = 0;// CREATE_PIN_SET(dwFlags);
 		p->dwUnblockPermission = 0; // dwFlags == PUKK_PIN_ID ? CREATE_PIN_SET(PUKK_PIN_ID) : 0;
-		p->PinType = isPinPad ? ExternalPinType : AlphaNumericPinType;
+		p->PinType = isPinPad(pCardData) ? ExternalPinType : AlphaNumericPinType;
 		p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
 		p->PinCachePolicy.dwPinCachePolicyInfo = 0;
 		p->PinCachePolicy.PinCachePolicyType = dwFlags == AUTH_PIN_ID ? PinCacheNormal : PinCacheNone;
@@ -933,9 +954,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 		!transfer({ 0x00, 0xA4, 0x02, 0x0C, 0x02, 0x00, 0x16 }, pCardData->hScard) ||
 		!(data = transfer({ 0x00, 0xB2, byte(PinId == AUTH_PIN_ID ? 1 : 2), 0x04, 0x00 }, pCardData->hScard))) ? 3 : data.data[5];
 
-	map<DRIVER_FEATURES, uint32_t> f = features(pCardData->hScard);
-	bool isPinPad = f.find(FEATURE_VERIFY_PIN_DIRECT) != f.cend() || f.find(FEATURE_VERIFY_PIN_START) != f.cend();
-	if (!isPinPad)
+	if (!isPinPad(pCardData))
 	{
 		_log("Secure connection is not used");
 		if (dwFlags == CARD_AUTHENTICATE_GENERATE_SESSION_PIN ||
