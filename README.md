@@ -17,6 +17,7 @@
 * Execute [buildcab.ps1](buildcab.ps1)
 
 ## Running CMCK tests
+* [Smart Card Minidriver Certification Test](https://msdn.microsoft.com/en-us/library/windows/hardware/dn390909%28v=vs.85%29.aspx)
 * Install esteid driver [install.bat](install.bat)
 * Attach 2 test cards, with same PIN
 * Set PIN values to [cmck_config.xml](cmck_config.xml) <PinEntry><Value> XML tag
