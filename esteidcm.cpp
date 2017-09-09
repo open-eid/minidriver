@@ -351,6 +351,25 @@ static void getMD5GUID(const string &data, PWCHAR guid)
 		guid[i] = result[i];
 }
 
+static map<uint8_t, vector<byte>> parseFCI(const vector<byte> &data)
+{
+	map<uint8_t, vector<byte>> result;
+	for (vector<byte>::const_iterator i = data.cbegin(); i != data.cend(); ++i)
+	{
+		uint8_t tag(*i), size(*++i);
+		result[tag] = size > 0 ? vector<byte>(i + 1, i + 1 + size) : vector<byte>();
+		switch (tag)
+		{
+		case 0x6F:
+		case 0x62:
+		case 0x64:
+		case 0xA1: continue;
+		default: i += size; break;
+		}
+	}
+	return result;
+}
+
 DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
 {
 	EXTERNAL_INFO *externalInfo = PEXTERNAL_INFO(lpParam);
@@ -500,9 +519,13 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 
 	auto readCert = [](const vector<byte> &file, SCARDHANDLE card) {
 		vector<byte> cert;
-		if (!transfer(file, card))
+		Result data;
+		if (!(data = transfer(file, card)))
 			return cert;
-		while (cert.size() < 0x0600)
+		map<uint8_t, vector<byte>> fci = parseFCI(data.data);
+		map<uint8_t, vector<byte>>::const_iterator found = fci.find(0x85);
+		size_t size = found != fci.cend() ? found->second[0] << 8 | found->second[1] : 0x0600;
+		while (cert.size() < size)
 		{
 			Result data = transfer({ 0x00, 0xB0, byte(cert.size() >> 8), byte(cert.size()), 0x00 }, card);
 			if (!data)
