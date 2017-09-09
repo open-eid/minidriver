@@ -111,8 +111,8 @@ typedef struct
 typedef struct
 {
 	HWND hwndParentWindow;
-	int pinType;
-	int langId;
+	PIN_ID pinId;
+	LANGID langId;
 } EXTERNAL_INFO, *PEXTERNAL_INFO;
 
 struct Files
@@ -400,34 +400,34 @@ DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
 		}
 		return S_OK;
 	};
-	switch (externalInfo->langId)
+	switch (PRIMARYLANGID(externalInfo->langId))
 	{
-	case 0x0425:
+	case LANG_ESTONIAN:
 		config.pszMainInstruction = L"PIN Pad kaardilugeja";
 		config.pszContent = L"Sisestage PIN";
-		switch (externalInfo->pinType)
+		switch (externalInfo->pinId)
 		{
-		case 1:
+		case AUTH_PIN_ID:
 			config.pszContent = L"Palun sisestage autoriseerimise PIN (PIN1)";
 			config.pszExpandedInformation = L"Valitud tegevuse jaoks on vaja kasutada isikutuvastuse sertifikaati. Sertifikaadi kasutamiseks sisesta PIN1 kaardilugeja sõrmistikult.";
 			break;
-		case 3:
+		case SIGN_PIN_ID:
 			config.pszContent = L"Palun sisestage digiallkirjastamise PIN (PIN2)";
 			config.pszExpandedInformation = L"Valitud tegevuse jaoks on vaja kasutada allkirjastamise sertifikaati. Sertifikaadi kasutamiseks sisesta PIN2 kaardilugeja sõrmistikult.";
 			break;
 		default: break;
 		}
 		break;
-	case 0x0419:
+	case LANG_RUSSIAN:
 		config.pszMainInstruction = L"PIN Pad считыватель";
 		config.pszContent = L"Введите PIN код";
-		switch (externalInfo->pinType)
+		switch (externalInfo->pinId)
 		{
-		case 1:
+		case AUTH_PIN_ID:
 			config.pszContent = L"Введите код PIN для идентификации (PIN 1)";
 			config.pszExpandedInformation = L"Данная операция требует сертификат идентификации. Для использования сертификата идентификации введите PIN1 с клавиатуры считывателя.";
 			break;
-		case 3:
+		case SIGN_PIN_ID:
 			config.pszContent = L"Введите код PIN для подписи (PIN 2)";
 			config.pszExpandedInformation = L"Для данной операцин необходим сертификат подписи. Для использования сертификата подписи введите PIN2 с клавиатуры считывателя.";
 			break;
@@ -437,13 +437,13 @@ DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
 	default:
 		config.pszMainInstruction = L"PIN Pad Reader";
 		config.pszContent = L"Enter PIN code";
-		switch (externalInfo->pinType)
+		switch (externalInfo->pinId)
 		{
-		case 1:
+		case AUTH_PIN_ID:
 			config.pszContent = L"Enter PIN for authentication (PIN 1)";
 			config.pszExpandedInformation = L"Selected action requires authentication certificate. For using authentication certificate enter PIN1 at the reader.";
 			break;
-		case 3:
+		case SIGN_PIN_ID:
 			config.pszContent = L"Enter PIN for digital signature (PIN 2)";
 			config.pszExpandedInformation = L"Selected action requires digital signature certificate. For using signature certificate enter PIN2 at the reader.";
 			break;
@@ -985,19 +985,10 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 			RETURN(SCARD_W_CHV_BLOCKED);
 		}
 
-		const int BUFFER_SIZE = 512;
-		WCHAR wcBuffer[BUFFER_SIZE];
-		int lReturn = GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SENGLANGUAGE, wcBuffer, BUFFER_SIZE);
-
 		EXTERNAL_INFO externalInfo;
 		externalInfo.hwndParentWindow = cp;
-		externalInfo.pinType = PinId;
-		if (wcscmp(L"Estonian", wcBuffer) == 0)
-			externalInfo.langId = 0x0425;
-		else if(wcscmp(L"Russian", wcBuffer) == 0)
-			externalInfo.langId = 0x0419;
-		else
-			externalInfo.langId = 0x0409;
+		externalInfo.pinId = PinId;
+		externalInfo.langId = GetUserDefaultUILanguage();
 
 		while (remaining)
 		{
@@ -1017,10 +1008,13 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 			case 0x63C1: // Validate error, 1 tries left
 			case 0x63C2: // Validate error, 2 tries left
 			case 0x63C3: // Validate error, 3 tries left
+			{
 				remaining--;
+				WCHAR wcBuffer[512];
 				wsprintf(wcBuffer, L"A wrong PIN was presented to the card: %i retries left.", remaining);
 				MessageBox(cp, wcBuffer, label, MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
 				break;
+			}
 			case 0x6400: // Timeout (SCM)
 				if (PinId == AUTH_PIN_ID)
 					MessageBox(cp, L"PIN1 timeout.", label, MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
