@@ -293,27 +293,68 @@ static Result transferCTL(const vector<byte> &apdu, bool verify, uint32_t lang, 
 	return result;
 }
 
-static PPUBKEYSTRUCT pubKeyStruct(__in PCARD_DATA pCardData, PCCERT_CONTEXT cer, DWORD &sw)
+static PPUBKEYSTRUCT pubKeyRSAStruct(PCARD_DATA pCardData, PCCERT_CONTEXT cer, DWORD &sw, ALG_ID algID)
 {
 	PCRYPT_BIT_BLOB PublicKey = &cer->pCertInfo->SubjectPublicKeyInfo.PublicKey;
 	CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
 		PublicKey->pbData, PublicKey->cbData, 0, nullptr, &sw);
 	PPUBKEYSTRUCT oh = PPUBKEYSTRUCT(pCardData->pfnCspAlloc(sw));
+	if (!oh)
+		return nullptr;
 	CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
 		PublicKey->pbData, PublicKey->cbData, 0, LPVOID(oh), &sw);
+	oh->publickeystruc.aiKeyAlg = algID;
 	return oh;
 }
 
-static DWORD keySize(__in PCARD_DATA pCardData, PCCERT_CONTEXT cer)
+static bool isECDSAPubKey(PCCERT_CONTEXT cert)
 {
-	DWORD size = 2048;
-	DWORD sw = 0;
-	PPUBKEYSTRUCT oh = pubKeyStruct(pCardData, cer, sw);
-	if (!oh)
+	return strcmp(szOID_ECC_PUBLIC_KEY, cert->pCertInfo->SubjectPublicKeyInfo.Algorithm.pszObjId) == 0;
+}
+
+static DWORD keySize(PCARD_DATA pCardData, PCCERT_CONTEXT cert)
+{
+	if (isECDSAPubKey(cert))
+	{
+		static const char P256[] = "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07"; // 1.2.840.10045.3.1.7
+		static const char P384[] = "\x06\x05\x2B\x81\x04\x00\x22"; // 1.3.132.0.34
+		static const char P521[] = "\x06\x05\x2B\x81\x04\x00\x23"; // 1.3.132.0.35
+		PCRYPT_OBJID_BLOB Parameters = &cert->pCertInfo->SubjectPublicKeyInfo.Algorithm.Parameters;
+		if (memcmp(P256, Parameters->pbData, Parameters->cbData) == 0) return 256;
+		if (memcmp(P384, Parameters->pbData, Parameters->cbData) == 0) return 384;
+		if (memcmp(P521, Parameters->pbData, Parameters->cbData) == 0) return 521;
+		return 384;
+	}
+	else
+	{
+		DWORD size = 2048;
+		DWORD sw = 0;
+		PPUBKEYSTRUCT oh = pubKeyRSAStruct(pCardData, cert, sw, 0);
+		if (!oh)
+			return size;
+		size = oh->rsapubkey.bitlen;
+		pCardData->pfnCspFree(oh);
 		return size;
-	size = oh->rsapubkey.bitlen;
-	pCardData->pfnCspFree(oh);
-	return size;
+	}
+}
+
+static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT cert, DWORD &sw)
+{
+	PCRYPT_BIT_BLOB PublicKey = &cert->pCertInfo->SubjectPublicKeyInfo.PublicKey;
+	sw = DWORD(sizeof(BCRYPT_ECCKEY_BLOB) + (PublicKey->cbData - 1));
+	PBCRYPT_ECCKEY_BLOB oh = PBCRYPT_ECCKEY_BLOB(pCardData->pfnCspAlloc(sw));
+	if (!oh)
+		return nullptr;
+	switch (keySize(pCardData, cert))
+	{
+	case 256: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P256_MAGIC; break;
+	case 384: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P384_MAGIC; break;
+	case 521: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P521_MAGIC; break;
+	default: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P384_MAGIC; break;
+	}
+	oh->cbKey = (PublicKey->cbData - 1) / 2;
+	CopyMemory(PBYTE(oh) + sizeof(BCRYPT_ECCKEY_BLOB), PublicKey->pbData + 1, PublicKey->cbData - 1);
+	return oh;
 }
 
 static vector<byte> md5sum(const string &data)
@@ -910,20 +951,21 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	{
 	case AUTH_CONTAINER_INDEX:
 	{
-		PPUBKEYSTRUCT oh = pubKeyStruct(pCardData, files->auth, pContainerInfo->cbKeyExPublicKey);
-		if (!oh)
+		if (isECDSAPubKey(files->auth))
+			pContainerInfo->pbSigPublicKey = PBYTE(pubKeyECStruct(pCardData, files->auth, pContainerInfo->cbSigPublicKey));
+		else
+			pContainerInfo->pbKeyExPublicKey = PBYTE(pubKeyRSAStruct(pCardData, files->auth, pContainerInfo->cbKeyExPublicKey, CALG_RSA_KEYX));
+		if (!pContainerInfo->pbKeyExPublicKey && !pContainerInfo->pbSigPublicKey)
 			RETURN(ERROR_NOT_ENOUGH_MEMORY);
-		oh->publickeystruc.aiKeyAlg = CALG_RSA_KEYX;
-		pContainerInfo->pbKeyExPublicKey = PBYTE(oh);
 		break;
 	}
 	case SIGN_CONTAINER_INDEX:
 	{
-		PPUBKEYSTRUCT oh = pubKeyStruct(pCardData, files->sign, pContainerInfo->cbSigPublicKey);
-		if (!oh)
+		pContainerInfo->pbSigPublicKey = isECDSAPubKey(files->sign) ?
+			PBYTE(pubKeyECStruct(pCardData, files->sign, pContainerInfo->cbSigPublicKey)) :
+			PBYTE(pubKeyRSAStruct(pCardData, files->sign, pContainerInfo->cbSigPublicKey, CALG_RSA_SIGN));
+		if (!pContainerInfo->pbSigPublicKey)
 			RETURN(ERROR_NOT_ENOUGH_MEMORY);
-		oh->publickeystruc.aiKeyAlg = CALG_RSA_SIGN;
-		pContainerInfo->pbSigPublicKey = PBYTE(oh);
 		break;
 	}
 	default:
@@ -1071,7 +1113,7 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryNam
 	}
 	if (!_strcmpi(pszDirectoryName, szBASE_CSP_DIR))
 	{
-		static const char mscp_files[] = szCONTAINER_MAP_FILE "\0" szUSER_KEYEXCHANGE_CERT_PREFIX "00\0" szUSER_SIGNATURE_CERT_PREFIX "01\0\0";
+		static const char mscp_files[] = szCONTAINER_MAP_FILE "\0" szUSER_KEYEXCHANGE_CERT_PREFIX "00\0" szUSER_SIGNATURE_CERT_PREFIX "00\0" szUSER_SIGNATURE_CERT_PREFIX "01\0\0";
 		*pdwcbFileName = sizeof(mscp_files) - 1;
 		*pmszFileNames = LPSTR(pCardData->pfnCspAlloc(*pdwcbFileName));
 		if (!*pmszFileNames)
@@ -1164,7 +1206,10 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 			CONTAINER_MAP_RECORD *c1 = (CONTAINER_MAP_RECORD*)*ppbData;
 			getMD5GUID(string((char*)files->cardid) + "_AUT", c1->wszGuid);
 			c1->bFlags = CONTAINER_MAP_VALID_CONTAINER | CONTAINER_MAP_DEFAULT_CONTAINER;
-			c1->wKeyExchangeKeySizeBits = WORD(keySize(pCardData, files->auth));
+			if (isECDSAPubKey(files->auth))
+				c1->wSigKeySizeBits = WORD(keySize(pCardData, files->auth));
+			else
+				c1->wKeyExchangeKeySizeBits = WORD(keySize(pCardData, files->auth));
 
 			CONTAINER_MAP_RECORD *c2 = (CONTAINER_MAP_RECORD*)(*ppbData + sizeof(CONTAINER_MAP_RECORD));
 			getMD5GUID(string((char*)files->cardid) + "_SIG", c2->wszGuid);
@@ -1173,7 +1218,8 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 
 			RETURN(NO_ERROR);
 		}
-		if (!_strcmpi(pszFileName, szUSER_KEYEXCHANGE_CERT_PREFIX "00"))
+		if ((!_strcmpi(pszFileName, szUSER_KEYEXCHANGE_CERT_PREFIX "00") && !isECDSAPubKey(files->auth)) ||
+			(!_strcmpi(pszFileName, szUSER_SIGNATURE_CERT_PREFIX "00") && isECDSAPubKey(files->auth)))
 		{
 			*pcbData = files->auth->cbCertEncoded;
 			*ppbData = PBYTE(pCardData->pfnCspAlloc(*pcbData));
@@ -1301,8 +1347,16 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		RETURN(SCARD_E_NO_KEY_CONTAINER);
 	if (pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION && pInfo->dwVersion != CARD_SIGNING_INFO_CURRENT_VERSION)
 		RETURN(ERROR_REVISION_MISMATCH);
-	if (pInfo->dwKeySpec != AT_KEYEXCHANGE && pInfo->dwKeySpec != AT_SIGNATURE)
-		RETURN(SCARD_E_INVALID_PARAMETER);
+	bool isRSA = true;
+	switch (pInfo->dwKeySpec)
+	{
+	case AT_KEYEXCHANGE:
+	case AT_SIGNATURE: break;
+	case AT_ECDSA_P256:
+	case AT_ECDSA_P384:
+	case AT_ECDSA_P521: isRSA = false; break;
+	default: RETURN(SCARD_E_INVALID_PARAMETER);
+	}	
 	DWORD dwFlagMask = CARD_PADDING_INFO_PRESENT | CARD_BUFFER_SIZE_ONLY | CARD_PADDING_NONE | CARD_PADDING_PKCS1 | CARD_PADDING_PSS;
 	if (pInfo->dwSigningFlags & (~dwFlagMask))
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1321,8 +1375,6 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		else if (wcscmp(pinf->pszAlgId, L"SHA512") == 0) hashAlg = CALG_SHA_512;
 		else RETURN(SCARD_E_UNSUPPORTED_FEATURE);
 	}
-	if (GET_ALG_CLASS(hashAlg) != ALG_CLASS_HASH)
-		RETURN(SCARD_E_INVALID_PARAMETER);
 
 	vector<byte> oid;
 	switch (hashAlg)
@@ -1350,7 +1402,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 	default: RETURN(SCARD_E_UNSUPPORTED_FEATURE);
 	}
 	vector<byte> hash(pInfo->pbData, pInfo->pbData + pInfo->cbData);
-	if (!(pInfo->dwSigningFlags & CRYPT_NOHASHOID))
+	if (!(pInfo->dwSigningFlags & CRYPT_NOHASHOID) && isRSA)
 		hash.insert(hash.begin(), oid.cbegin(), oid.cend());
 	_log("Hash to sign: %s with size: %i", toHex(hash).c_str(), hash.size());
 
@@ -1370,7 +1422,8 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 	if (!result)
 		RETURN(SCARD_W_SECURITY_VIOLATION);
 
-	reverse(result.data.begin(), result.data.end());
+	if (isRSA)
+		reverse(result.data.begin(), result.data.end());
 	_log("Signed hash: %s with size: %i", toHex(result.data).c_str(), result.data.size());
 	pInfo->cbSignedData = DWORD(result.data.size());
 	if (!(pInfo->dwSigningFlags & CARD_BUFFER_SIZE_ONLY))
