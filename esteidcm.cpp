@@ -63,6 +63,8 @@ enum DRIVER_FEATURES {
 	FEATURE_CCID_ESC_COMMAND = 0x13
 };
 
+#pragma pack(push, 1)
+
 typedef struct
 {
 	uint8_t bTimerOut;
@@ -101,6 +103,8 @@ typedef struct
 	uint32_t ulDataLength;
 	uint8_t abData[1];
 } PIN_MODIFY_STRUCTURE;
+
+#pragma pack(pop)
 
 typedef struct
 {
@@ -240,15 +244,16 @@ static Result transferCTL(const vector<byte> &apdu, bool verify, uint32_t lang, 
 	vector<byte> cmd;
 	if (verify)
 	{
+		cmd.resize(sizeof(PIN_VERIFY_STRUCTURE) - 1);
 		PIN_VERIFY_STRUCTURE *data = (PIN_VERIFY_STRUCTURE*)cmd.data();
 		SET(data);
 		data->bNumberMessage = pin_properties.wLcdLayout > 0 ? 0xFF : 0x00;
 		data->bMsgIndex = 0x00;
 		data->ulDataLength = uint32_t(apdu.size());
-		cmd.resize(sizeof(PIN_VERIFY_STRUCTURE) - 1);
 	}
 	else
 	{
+		cmd.resize(sizeof(PIN_MODIFY_STRUCTURE) - 1);
 		PIN_MODIFY_STRUCTURE *data = (PIN_MODIFY_STRUCTURE*)cmd.data();
 		SET(data);
 		data->bNumberMessage = pin_properties.wLcdLayout > 0 ? 0x03 : 0x00;
@@ -259,7 +264,6 @@ static Result transferCTL(const vector<byte> &apdu, bool verify, uint32_t lang, 
 		data->bMsgIndex2 = 0x01;
 		data->bMsgIndex3 = 0x02;
 		data->ulDataLength = uint32_t(apdu.size());
-		cmd.resize(sizeof(PIN_MODIFY_STRUCTURE) - 1);
 	}
 	cmd.insert(cmd.cend(), apdu.cbegin(), apdu.cend());
 
@@ -465,17 +469,9 @@ DWORD WINAPI DialogThreadEntry(LPVOID lpParam)
 	return TaskDialogIndirect(&config, &buttonPressed, NULL, NULL);
 }
 
-BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
 	_log("Reason %u", ul_reason_for_call);
-	switch (ul_reason_for_call)
-	{
-	case DLL_PROCESS_ATTACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
-	}
     return TRUE;
 }
 
