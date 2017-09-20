@@ -1,5 +1,6 @@
 param(
-  [string]$version = "3.12.0.0",
+  [string]$buildnr = "0",
+  [string]$version = "3.12.0.$buildnr",
   [string]$date = $(Get-Date -format "MM\/dd\/yyyy"),
   [string]$target = "Package",
   [string]$driver = "$target\minidriver",
@@ -36,8 +37,8 @@ function makecab($dir, $cab)
     rm setup.rpt
 }
 
-& $msbuild /nologo /verbosity:quiet "/p:Configuration=Release;Platform=Win32" esteidcm.sln
-& $msbuild /nologo /verbosity:quiet "/p:Configuration=Release;Platform=X64" esteidcm.sln
+& $msbuild /nologo /verbosity:quiet "/p:Configuration=Release;Platform=Win32;BUILD_NUMBER=$buildnr" esteidcm.sln
+& $msbuild /nologo /verbosity:quiet "/p:Configuration=Release;Platform=X64;BUILD_NUMBER=$buildnr" esteidcm.sln
 
 Remove-Item $driver -Force -Recurse > $null
 New-Item -ItemType directory -Path "$driver\x86" > $null

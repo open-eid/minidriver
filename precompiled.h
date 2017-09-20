@@ -10,32 +10,32 @@
 *
 */
 
-/*#ifndef WINVER				// Allow use of features specific to Windows XP or later.
-#define WINVER 0x0501		// Change this to the appropriate value to target other versions of Windows.
+#ifndef WINVER				// Allow use of features specific to Windows 7 or later.
+#define WINVER 0x0601		// Change this to the appropriate value to target other versions of Windows.
 #endif
 
-#ifndef _WIN32_WINNT		// Allow use of features specific to Windows XP or later.                   
-#define _WIN32_WINNT 0x0501	// Change this to the appropriate value to target other versions of Windows.
+#ifndef _WIN32_WINNT		// Allow use of features specific to Windows 7 or later.                   
+#define _WIN32_WINNT 0x0601	// Change this to the appropriate value to target other versions of Windows.
 #endif						
 
-#ifndef _WIN32_WINDOWS		// Allow use of features specific to Windows 98 or later.
-#define _WIN32_WINDOWS 0x0410 // Change this to the appropriate value to target Windows Me or later.
+#ifndef _WIN32_WINDOWS		// Allow use of features specific to Windows 7 or later.
+#define _WIN32_WINDOWS 0x0601 // Change this to the appropriate value to target other versions of Windows.
 #endif
 
-#ifndef _WIN32_IE			// Allow use of features specific to IE 6.0 or later.
-#define _WIN32_IE 0x0600	// Change this to the appropriate value to target other versions of IE.
-#endif*/
+#ifndef _WIN32_IE			// Allow use of features specific to IE 8.0 or later.
+#define _WIN32_IE 0x0800	// Change this to the appropriate value to target other versions of IE.
+#endif
 
 #define NOMINMAX 
+#define WIN32_LEAN_AND_MEAN
 
-#define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
-// Windows Header Files:
 #include <windows.h>
-#include <WinBase.h>
 #include <Winsock2.h>
 #include <Commctrl.h>
-#include <Shellapi.h>
+
 #include "cardmod.h"
+#include "version.h"
+
 #include <algorithm>
 #include <io.h>
 #include <iomanip>
@@ -43,13 +43,4 @@
 #include <sstream>
 #include <vector>
 
-// common controls
-#if defined _M_IX86
-#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='x86' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#elif defined _M_IA64
-#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='ia64' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#elif defined _M_X64
-#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='amd64' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#else
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#endif
