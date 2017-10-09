@@ -13,7 +13,7 @@
       <PreprocessorDefinitions>MAJOR_VERSION=$(MAJOR_VERSION);MINOR_VERSION=$(MINOR_VERSION);RELEASE_VERSION=$(RELEASE_VERSION);BUILD_NUMBER=$(BUILD_NUMBER);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <ClCompile>
-      <PreprocessorDefinitions>MAJOR_VERSION=$(MAJOR_VERSION);MINOR_VERSION=$(MINOR_VERSION);RELEASE_VERSION=$(RELEASE_VERSION);BUILD_NUMBER=$(BUILD_NUMBER);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MAJOR_VERSION=$(MAJOR_VERSION);MINOR_VERSION=$(MINOR_VERSION);RELEASE_VERSION=$(RELEASE_VERSION);BUILD_NUMBER=$(BUILD_NUMBER);_SCL_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

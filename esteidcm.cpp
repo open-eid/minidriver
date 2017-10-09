@@ -12,8 +12,6 @@
 
 #include "precompiled.h"
 
-#define NULLSTR(a) (a == NULL ? "<NULL>" : a)
-#define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)
 #define AUTH_PIN_ID ROLE_USER
 #define SIGN_PIN_ID 3
 #define PUKK_PIN_ID ROLE_ADMIN
@@ -165,8 +163,8 @@ static string toHex(const vector<byte> &data)
 {
 	stringstream os;
 	os << hex << setfill('0');
-	for (vector<byte>::const_iterator i = data.begin(); i != data.end(); ++i)
-		os << setw(2) << static_cast<int>(*i);
+	for (const byte &i: data)
+		os << setw(2) << static_cast<int>(i);
 	return os.str();
 }
 
@@ -180,7 +178,7 @@ static Result transfer(const vector<byte> &apdu, SCARDHANDLE card)
 
 	_log("> " + toHex(apdu));
 	DWORD ret = SCardTransmit(card, dwProtocol == SCARD_PROTOCOL_T0 ? SCARD_PCI_T0 : SCARD_PCI_T1,
-		LPCBYTE(apdu.data()), DWORD(apdu.size()), nullptr, LPBYTE(data.data()), &size);
+		apdu.data(), DWORD(apdu.size()), nullptr, data.data(), &size);
 	if (ret != SCARD_S_SUCCESS)
 		return{ 0, 0, vector<byte>() };
 
@@ -380,7 +378,7 @@ static vector<byte> md5sum(const string &data)
 
 	DWORD md5size = 16;
 	result.resize(md5size);
-	if (!CryptGetHashParam(hHash, HP_HASHVAL, PBYTE(result.data()), &md5size, 0))
+	if (!CryptGetHashParam(hHash, HP_HASHVAL, result.data(), &md5size, 0))
 		result.clear();
 
 	CryptReleaseContext(hProv, 0);
@@ -430,7 +428,7 @@ DWORD WINAPI CreateProgressBar(LPVOID lpParam)
 	TASKDIALOGCONFIG config = { 0 };
 	config.cbSize = sizeof(config);
 	config.hwndParent = externalInfo->hwndParentWindow;
-	config.hInstance = GetModuleHandle(NULL);
+	config.hInstance = GetModuleHandle(nullptr);
 	config.dwCommonButtons = TDCBF_CANCEL_BUTTON;
 	config.pszMainIcon = TD_INFORMATION_ICON;
 	config.dwFlags = TDF_EXPAND_FOOTER_AREA | TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER;
@@ -523,7 +521,7 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 {
 	if (!pCardData)
 		RETURN(SCARD_E_INVALID_PARAMETER);
-	_log("dwVersion=%u, name=%S"", hScard=0x%08X, hSCardCtx=0x%08X", pCardData->dwVersion, NULLWSTR(pCardData->pwszCardName),
+	_log("dwVersion=%u, name=%S, hScard=0x%08X, hSCardCtx=0x%08X", pCardData->dwVersion, pCardData->pwszCardName,
 		pCardData->hScard, pCardData->hSCardCtx);
 	if (pCardData->dwVersion < CARD_DATA_VERSION_SEVEN)
 		RETURN(ERROR_REVISION_MISMATCH);
@@ -603,16 +601,17 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	memcpy(files->cardid, cardid.c_str(), cardid.size());
 
 	HKEY rootKey = nullptr;
-	LPCTSTR subKey = L"SOFTWARE\\RIA\\minidriver";
-	CHAR lpData[1024];
+	DWORD lpData = 0;
 	DWORD lpSize = sizeof(lpData);
-	DWORD dwType = 0;
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subKey, NULL, KEY_READ, &rootKey) == ERROR_SUCCESS &&
-		RegQueryValueEx(rootKey, L"disablepinpad", NULL, &dwType, (LPBYTE)&lpData, &lpSize) == ERROR_SUCCESS)
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\RIA\\minidriver", 0, KEY_READ, &rootKey) == ERROR_SUCCESS &&
+		RegQueryValueEx(rootKey, L"disablepinpad", 0, nullptr, PBYTE(&lpData), &lpSize) == ERROR_SUCCESS &&
+		lpData > 0)
 	{
 		files->pinpadEnabled = false;
 		_log("Disabling pinpad by registry setting");
 	}
+	if (rootKey)
+		RegCloseKey(rootKey);
 
 	pCardData->dwVersion = CARD_DATA_VERSION_SEVEN;
 	pCardData->pfnCardDeleteContext = CardDeleteContext;
@@ -688,7 +687,7 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData, __in BYTE bCont
 {
 	if (!pCardData)
 		RETURN(SCARD_E_INVALID_PARAMETER);
-	_log("bContainerIndex=%u, wszProperty=%S"", cbData=%u, dwFlags=0x%08X", bContainerIndex, NULLWSTR(wszProperty), cbData, dwFlags);
+	_log("bContainerIndex=%u, wszProperty=%S, cbData=%u, dwFlags=0x%08X", bContainerIndex, wszProperty, cbData, dwFlags);
 	if (!wszProperty || dwFlags || !pbData || !pdwDataLen)
 		RETURN(SCARD_E_INVALID_PARAMETER);
 
@@ -722,7 +721,7 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData, __in BYTE bCont
 DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty,
 	__out_bcount_part_opt(cbData, *pdwDataLen) PBYTE pbData, __in DWORD cbData, __out PDWORD pdwDataLen, __in DWORD dwFlags)
 {
-	_log("wszProperty=%S, cbData=%u, dwFlags=%u", NULLWSTR(wszProperty), cbData, dwFlags);
+	_log("wszProperty=%S, cbData=%u, dwFlags=%u", wszProperty, cbData, dwFlags);
 	if (!pCardData || !wszProperty || !pbData || !pdwDataLen)
 		RETURN(SCARD_E_INVALID_PARAMETER);
 
@@ -880,7 +879,7 @@ DWORD WINAPI CardSetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 {
 	if (!pCardData || !wszProperty)
 		RETURN(SCARD_E_INVALID_PARAMETER);
-	_log("wszProperty=%S"", cbDataLen=%u, dwFlags=%u", NULLWSTR(wszProperty), cbDataLen, dwFlags);
+	_log("wszProperty=%S, cbDataLen=%u, dwFlags=%u", wszProperty, cbDataLen, dwFlags);
 
 	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0)
 		RETURN(NO_ERROR);
@@ -930,8 +929,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		RETURN(SCARD_E_INVALID_PARAMETER);
 	if (pContainerInfo->dwVersion < 0 || pContainerInfo->dwVersion > CONTAINER_INFO_CURRENT_VERSION)
 		RETURN(ERROR_REVISION_MISMATCH);
-	_log("bContainerIndex=%u, dwFlags=0x%08X, dwVersion=%u"", cbSigPublicKey=%u, cbKeyExPublicKey=%u",
-		bContainerIndex, dwFlags, pContainerInfo->dwVersion, pContainerInfo->cbSigPublicKey, pContainerInfo->cbKeyExPublicKey);
+	_log("bContainerIndex=%u, dwFlags=0x%08X, dwVersion=%u", bContainerIndex, dwFlags, pContainerInfo->dwVersion);
 
 	pContainerInfo->dwVersion = CONTAINER_INFO_CURRENT_VERSION;
 	pContainerInfo->cbSigPublicKey = 0;
@@ -968,7 +966,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 
 DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData, __in LPWSTR pwszUserId, __in_bcount(cbPin) PBYTE pbPin, __in DWORD cbPin, __out_opt PDWORD pcAttemptsRemaining)
 {
-	_log("pwszUserId=%S", NULLWSTR(pwszUserId));
+	_log("pwszUserId=%S", pwszUserId);
 	if (!pwszUserId || wcscmp(pwszUserId, wszCARD_USER_USER) != 0 || !pbPin)
 		RETURN(SCARD_E_INVALID_PARAMETER);
 	return CardAuthenticateEx(pCardData, AUTH_PIN_ID, CARD_PIN_SILENT_CONTEXT, pbPin, cbPin, nullptr, nullptr, pcAttemptsRemaining);
@@ -1046,7 +1044,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 		while (remaining)
 		{
 			_log("Authenticating with PinPAD");
-			HANDLE thread = CreateThread(NULL, 0, CreateProgressBar, &externalInfo, 0, NULL);
+			HANDLE thread = CreateThread(nullptr, 0, CreateProgressBar, &externalInfo, 0, nullptr);
 			Result result = transferCTL({ 0x00, 0x20, 0x00, byte(PinId == AUTH_PIN_ID ? 1 : 2), 0x00 },
 				true, externalInfo.langId, PinId == AUTH_PIN_ID ? 4 : 5, pCardData->hScard);
 			SendMessage(externalInfo.windowHandle, WM_NCDESTROY, 0, 0);
@@ -1118,7 +1116,7 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryNam
 
 DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName, __in LPSTR pszFileName, __in PCARD_FILE_INFO pCardFileInfo)
 {
-	_log("pszDirectoryName='%s', pszFileName='%s'", NULLSTR(pszDirectoryName), NULLSTR(pszFileName));
+	_log("pszDirectoryName='%s', pszFileName='%s'", pszDirectoryName, pszFileName);
 	if (!pCardData || !pszFileName || !strlen(pszFileName) || !pCardFileInfo)
 		RETURN(SCARD_E_INVALID_PARAMETER);
 
@@ -1160,7 +1158,7 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryN
 
 DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName, __in LPSTR pszFileName, __in DWORD dwFlags, __deref_out_bcount(*pcbData)PBYTE *ppbData, __out PDWORD pcbData)
 {
-	_log("pszDirectoryName=%s, pszFileName=%s, dwFlags=0x%08X", NULLSTR(pszDirectoryName), NULLSTR(pszFileName), dwFlags);
+	_log("pszDirectoryName=%s, pszFileName=%s, dwFlags=0x%08X", pszDirectoryName, pszFileName, dwFlags);
 	if (!pCardData || !pszFileName || !strlen(pszFileName) || !ppbData || !pcbData || dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
 
@@ -1168,7 +1166,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 	if (!_strcmpi(pszFileName, szCACHE_FILE))
 	{
 		*pcbData = sizeof(cardcf);
-		*ppbData = LPBYTE(pCardData->pfnCspAlloc(*pcbData));
+		*ppbData = PBYTE(pCardData->pfnCspAlloc(*pcbData));
 		if (!*ppbData)
 			RETURN(ERROR_NOT_ENOUGH_MEMORY);
 		CopyMemory(*ppbData, cardcf, *pcbData);
@@ -1345,7 +1343,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 {
 	if (!pCardData || !pInfo || !pInfo->pbData)
 		RETURN(SCARD_E_INVALID_PARAMETER);
-	_log("dwVersion=%u, bContainerIndex=%u, dwKeySpec=%u"", dwSigningFlags=0x%08X, aiHashAlg=0x%08X, cbData=%u",
+	_log("dwVersion=%u, bContainerIndex=%u, dwKeySpec=%u, dwSigningFlags=0x%08X, aiHashAlg=0x%08X, cbData=%u",
 		pInfo->dwVersion, pInfo->bContainerIndex, pInfo->dwKeySpec, pInfo->dwSigningFlags, pInfo->aiHashAlg, pInfo->cbData);
 	pInfo->cbSignedData = 0;
 	if (pInfo->bContainerIndex != AUTH_CONTAINER_INDEX && pInfo->bContainerIndex != SIGN_CONTAINER_INDEX)
