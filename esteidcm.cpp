@@ -345,14 +345,14 @@ static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT c
 	PBCRYPT_ECCKEY_BLOB oh = PBCRYPT_ECCKEY_BLOB(pCardData->pfnCspAlloc(sw));
 	if (!oh)
 		return nullptr;
-	switch (keySize(pCardData, cert))
+	oh->cbKey = (PublicKey->cbData - 1) / 2;
+	switch (oh->cbKey * 8)
 	{
 	case 256: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P256_MAGIC; break;
 	case 384: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P384_MAGIC; break;
 	case 521: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P521_MAGIC; break;
 	default: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P384_MAGIC; break;
 	}
-	oh->cbKey = (PublicKey->cbData - 1) / 2;
 	CopyMemory(PBYTE(oh) + sizeof(BCRYPT_ECCKEY_BLOB), PublicKey->pbData + 1, PublicKey->cbData - 1);
 	return oh;
 }
@@ -614,6 +614,7 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		_log("Disabling pinpad by registry setting");
 	}
 
+	pCardData->dwVersion = CARD_DATA_VERSION_SEVEN;
 	pCardData->pfnCardDeleteContext = CardDeleteContext;
 	pCardData->pfnCardQueryCapabilities = CardQueryCapabilities;
 	pCardData->pfnCardDeleteContainer = CardDeleteContainer;
@@ -642,39 +643,30 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	pCardData->pfnCardRSADecrypt = CardRSADecrypt;
 	pCardData->pfnCardConstructDHAgreement = nullptr;
 
-	if (CARD_DATA_VERSION_SEVEN < pCardData->dwVersion)
-		pCardData->dwVersion = CARD_DATA_VERSION_SEVEN;
-	if (pCardData->dwVersion > 4)
-	{
-		pCardData->pfnCardDeriveKey = nullptr;
-		pCardData->pfnCardDestroyDHAgreement = nullptr;
-		pCardData->pfnCspGetDHAgreement = nullptr;
-	}
-	if (pCardData->dwVersion > 5)
-	{
-		pCardData->pfnCardGetChallengeEx = CardGetChallengeEx;
-		pCardData->pfnCardAuthenticateEx = CardAuthenticateEx;
-		pCardData->pfnCardChangeAuthenticatorEx = CardChangeAuthenticatorEx;
-		pCardData->pfnCardDeauthenticateEx = CardDeauthenticateEx;
-		pCardData->pfnCardGetContainerProperty = CardGetContainerProperty;
-		pCardData->pfnCardSetContainerProperty = CardSetContainerProperty;
-		pCardData->pfnCardGetProperty = CardGetProperty;
-		pCardData->pfnCardSetProperty = CardSetProperty;
-	}
-	if (pCardData->dwVersion > 6)
-	{
-		//pCardData->pfnCspUnpadData = CspUnpadData;
-		pCardData->pfnMDImportSessionKey = MDImportSessionKey;
-		pCardData->pfnMDEncryptData = MDEncryptData;
-		pCardData->pfnCardImportSessionKey = CardImportSessionKey;
-		pCardData->pfnCardGetSharedKeyHandle = CardGetSharedKeyHandle;
-		pCardData->pfnCardGetAlgorithmProperty = CardGetAlgorithmProperty;
-		pCardData->pfnCardGetKeyProperty = CardGetKeyProperty;
-		pCardData->pfnCardSetKeyProperty = CardSetKeyProperty;
-		pCardData->pfnCardDestroyKey = CardDestroyKey;
-		pCardData->pfnCardProcessEncryptedData = CardProcessEncryptedData;
-		pCardData->pfnCardCreateContainerEx = CardCreateContainerEx;
-	}
+	pCardData->pfnCardDeriveKey = nullptr;
+	pCardData->pfnCardDestroyDHAgreement = nullptr;
+	pCardData->pfnCspGetDHAgreement = nullptr;
+
+	pCardData->pfnCardGetChallengeEx = CardGetChallengeEx;
+	pCardData->pfnCardAuthenticateEx = CardAuthenticateEx;
+	pCardData->pfnCardChangeAuthenticatorEx = CardChangeAuthenticatorEx;
+	pCardData->pfnCardDeauthenticateEx = CardDeauthenticateEx;
+	pCardData->pfnCardGetContainerProperty = CardGetContainerProperty;
+	pCardData->pfnCardSetContainerProperty = CardSetContainerProperty;
+	pCardData->pfnCardGetProperty = CardGetProperty;
+	pCardData->pfnCardSetProperty = CardSetProperty;
+
+	//pCardData->pfnCspUnpadData = CspUnpadData;
+	pCardData->pfnMDImportSessionKey = MDImportSessionKey;
+	pCardData->pfnMDEncryptData = MDEncryptData;
+	pCardData->pfnCardImportSessionKey = CardImportSessionKey;
+	pCardData->pfnCardGetSharedKeyHandle = CardGetSharedKeyHandle;
+	pCardData->pfnCardGetAlgorithmProperty = CardGetAlgorithmProperty;
+	pCardData->pfnCardGetKeyProperty = CardGetKeyProperty;
+	pCardData->pfnCardSetKeyProperty = CardSetKeyProperty;
+	pCardData->pfnCardDestroyKey = CardDestroyKey;
+	pCardData->pfnCardProcessEncryptedData = CardProcessEncryptedData;
+	pCardData->pfnCardCreateContainerEx = CardCreateContainerEx;
 	RETURN(NO_ERROR);
 }
 
@@ -1203,7 +1195,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 				RETURN(ERROR_NOT_ENOUGH_MEMORY);
 			ZeroMemory(*ppbData, *pcbData);
 
-			CONTAINER_MAP_RECORD *c1 = (CONTAINER_MAP_RECORD*)*ppbData;
+			PCONTAINER_MAP_RECORD c1 = PCONTAINER_MAP_RECORD(*ppbData);
 			getMD5GUID(string((char*)files->cardid) + "_AUT", c1->wszGuid);
 			c1->bFlags = CONTAINER_MAP_VALID_CONTAINER | CONTAINER_MAP_DEFAULT_CONTAINER;
 			if (isECDSAPubKey(files->auth))
@@ -1211,7 +1203,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 			else
 				c1->wKeyExchangeKeySizeBits = WORD(keySize(pCardData, files->auth));
 
-			CONTAINER_MAP_RECORD *c2 = (CONTAINER_MAP_RECORD*)(*ppbData + sizeof(CONTAINER_MAP_RECORD));
+			PCONTAINER_MAP_RECORD c2 = PCONTAINER_MAP_RECORD(*ppbData + sizeof(CONTAINER_MAP_RECORD));
 			getMD5GUID(string((char*)files->cardid) + "_SIG", c2->wszGuid);
 			c2->bFlags = CONTAINER_MAP_VALID_CONTAINER;
 			c2->wSigKeySizeBits = WORD(keySize(pCardData, files->sign));
@@ -1256,21 +1248,34 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags, _
 
 DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData, __in DWORD dwKeySpec, __in DWORD dwFlags, __in PCARD_KEY_SIZES pKeySizes)
 {
-	if (!pCardData || !pKeySizes)
+	if (!pCardData || !pKeySizes || dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
-	_log("dwKeySpec=%u, dwFlags=0x%08X, dwVersion=%u", dwKeySpec, dwFlags, pKeySizes->dwVersion);
-	if (dwFlags || dwKeySpec > 8 || dwKeySpec == 0)
-		RETURN(SCARD_E_INVALID_PARAMETER);
-	if (dwKeySpec != AT_SIGNATURE && dwKeySpec != AT_KEYEXCHANGE)
-		RETURN(SCARD_E_UNSUPPORTED_FEATURE);
+	_log("dwKeySpec=%u, dwVersion=%u", dwKeySpec, pKeySizes->dwVersion);
 	if (pKeySizes->dwVersion > CARD_KEY_SIZES_CURRENT_VERSION)
 		RETURN(ERROR_REVISION_MISMATCH);
 	Files *files = (Files*)pCardData->pvVendorSpecific;
-	DWORD size = keySize(pCardData, dwKeySpec == AT_KEYEXCHANGE ? files->auth : files->sign);
-	pKeySizes->dwDefaultBitlen = size;
-	pKeySizes->dwMaximumBitlen = size;
-	pKeySizes->dwMinimumBitlen = size;
-	pKeySizes->dwIncrementalBitlen = 0;
+	switch (dwKeySpec)
+	{
+	case AT_SIGNATURE:
+	case AT_KEYEXCHANGE:
+		pKeySizes->dwDefaultBitlen = pKeySizes->dwMaximumBitlen = pKeySizes->dwMinimumBitlen =
+			keySize(pCardData, dwKeySpec == AT_KEYEXCHANGE ? files->auth : files->sign);
+		pKeySizes->dwIncrementalBitlen = 0;
+		break;
+	case AT_ECDSA_P256:
+	case AT_ECDSA_P384:
+	case AT_ECDSA_P521:
+		pKeySizes->dwDefaultBitlen = pKeySizes->dwMaximumBitlen = pKeySizes->dwMinimumBitlen =
+			keySize(pCardData, files->auth);
+		pKeySizes->dwIncrementalBitlen = 1;
+		break;
+	case AT_ECDHE_P256:
+	case AT_ECDHE_P384:
+	case AT_ECDHE_P521:
+		RETURN(SCARD_E_UNSUPPORTED_FEATURE);
+	default:
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	}
 	RETURN(NO_ERROR);
 }
 
@@ -1368,11 +1373,11 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 			RETURN(SCARD_E_UNSUPPORTED_FEATURE);
 		BCRYPT_PKCS1_PADDING_INFO *pinf = (BCRYPT_PKCS1_PADDING_INFO*)pInfo->pPaddingInfo;
 		if (!pinf->pszAlgId) hashAlg = CALG_SSL3_SHAMD5;
-		else if (wcscmp(pinf->pszAlgId, L"MD5") == 0) hashAlg = CALG_MD5;
-		else if (wcscmp(pinf->pszAlgId, L"SHA1") == 0) hashAlg = CALG_SHA1;
-		else if (wcscmp(pinf->pszAlgId, L"SHA256") == 0) hashAlg = CALG_SHA_256;
-		else if (wcscmp(pinf->pszAlgId, L"SHA384") == 0) hashAlg = CALG_SHA_384;
-		else if (wcscmp(pinf->pszAlgId, L"SHA512") == 0) hashAlg = CALG_SHA_512;
+		else if (wcscmp(pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0) hashAlg = CALG_MD5;
+		else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0) hashAlg = CALG_SHA1;
+		else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0) hashAlg = CALG_SHA_256;
+		else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0) hashAlg = CALG_SHA_384;
+		else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0) hashAlg = CALG_SHA_512;
 		else RETURN(SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -1399,7 +1404,10 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		break;
 	case CALG_SSL3_SHAMD5:
 	case 0: break;
-	default: RETURN(SCARD_E_UNSUPPORTED_FEATURE);
+	default:
+		if (GET_ALG_CLASS(hashAlg) != ALG_CLASS_HASH)
+			RETURN(SCARD_E_INVALID_PARAMETER);	
+		RETURN(SCARD_E_UNSUPPORTED_FEATURE);
 	}
 	vector<byte> hash(pInfo->pbData, pInfo->pbData + pInfo->cbData);
 	if (!(pInfo->dwSigningFlags & CRYPT_NOHASHOID) && isRSA)
@@ -1417,7 +1425,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		cmd = { 0x00, 0x88, 0x00, 0x00, byte(hash.size()) };
 	else
 		cmd = { 0x00, 0x2A, 0x9E, 0x9A, byte(hash.size()) };
-	cmd.insert(cmd.end(), hash.data(), hash.data() + hash.size());
+	cmd.insert(cmd.end(), hash.cbegin(), hash.cend());
 	Result result = transfer(cmd, pCardData->hScard);
 	if (!result)
 		RETURN(SCARD_W_SECURITY_VIOLATION);

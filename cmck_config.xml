@@ -24,34 +24,6 @@
           <Blocking>True</Blocking>
           <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
-        <PinEntry>
-          <RoleID>4</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
-        <PinEntry>
-          <RoleID>5</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
-        <PinEntry>
-          <RoleID>6</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
-        <PinEntry>
-          <RoleID>6</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
       </DefaultPins>
       <CardSupports>
         <MinimumVersion>7</MinimumVersion>
@@ -59,10 +31,10 @@
         <LoadingUnderCAPI>True</LoadingUnderCAPI>
         <LoadingUnderCNG>True</LoadingUnderCNG>
         <KeyImport>False</KeyImport>
-        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE</KeyTypes>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P256 AT_ECDSA_P384 AT_ECDSA_P521</KeyTypes>
         <OnCardPadding>False</OnCardPadding>
         <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
-        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
+        <SignHashAlgorithms>CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
         <SignHashFlags></SignHashFlags>
         <SignReturnBufferSize>True</SignReturnBufferSize>
         <KDFTypes>HASH</KDFTypes>
@@ -130,34 +102,6 @@
           <Blocking>True</Blocking>
           <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
-        <PinEntry>
-          <RoleID>4</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
-        <PinEntry>
-          <RoleID>5</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
-        <PinEntry>
-          <RoleID>6</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
-        <PinEntry>
-          <RoleID>6</RoleID>
-          <Type>EmptyPinType</Type>
-          <Value></Value>
-          <Blocking>True</Blocking>
-          <AllowZeroLength>False</AllowZeroLength>
-        </PinEntry>
       </DefaultPins>
       <CardSupports>
         <MinimumVersion>7</MinimumVersion>
@@ -165,10 +109,10 @@
         <LoadingUnderCAPI>True</LoadingUnderCAPI>
         <LoadingUnderCNG>True</LoadingUnderCNG>
         <KeyImport>False</KeyImport>
-        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE</KeyTypes>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P256 AT_ECDSA_P384 AT_ECDSA_P521</KeyTypes>
         <OnCardPadding>False</OnCardPadding>
         <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
-        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
+        <SignHashAlgorithms>CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
         <SignHashFlags></SignHashFlags>
         <SignReturnBufferSize>True</SignReturnBufferSize>
         <KDFTypes>HASH</KDFTypes>
@@ -223,6 +167,13 @@
           <AllowZeroLength>False</AllowZeroLength>
         </PinEntry>
         <PinEntry>
+          <RoleID>2</RoleID>   <!-- PUK-ADMIN/ROLE_ADMIN -->
+          <Type>EmptyPinType</Type>
+          <Value>0x31 0x37 0x32 0x35 0x38 0x34 0x30 0x33</Value>
+          <Blocking>True</Blocking>
+          <AllowZeroLength>False</AllowZeroLength>
+        </PinEntry>
+        <PinEntry>
           <RoleID>3</RoleID>  <!-- signature -->
           <Type>AlphaNumericPinType</Type>
           <Value>0x30 0x31 0x34 0x39 0x37</Value>
@@ -236,10 +187,10 @@
         <LoadingUnderCAPI>True</LoadingUnderCAPI>
         <LoadingUnderCNG>True</LoadingUnderCNG>
         <KeyImport>False</KeyImport>
-        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE</KeyTypes>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P256 AT_ECDSA_P384 AT_ECDSA_P521</KeyTypes>
         <OnCardPadding>False</OnCardPadding>
         <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
-        <SignHashAlgorithms>CALG_MD5 CALG_SHA CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
+        <SignHashAlgorithms>CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
         <SignHashFlags></SignHashFlags>
         <SignReturnBufferSize>True</SignReturnBufferSize>
         <KDFTypes>HASH</KDFTypes>
