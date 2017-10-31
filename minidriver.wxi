@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Include>
+  <!-- Trac 23476 -->
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\ActivIdentity ActivClient (JavaCard #1)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\ActivIdentity ActivClient (JavaCard #2)"/>
+  <!-- Obsolete Cards and keys -->
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Defaults\Provider\EstEID Card CSP"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (cold ATR)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (short ATR)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (MultOS)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (1.0 2007 cold ATR)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (1.0 2007 warm ATR)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (1.0 cold ATR)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (1.0 warm ATR)"/>
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (1.1 MULTOS cold ATR)"/>
+</Include>
