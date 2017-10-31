@@ -348,27 +348,43 @@ static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT c
 	return oh;
 }
 
-static void getSHA1GUID(PCCERT_CONTEXT cert, PWCHAR guid, size_t guidsize)
+static vector<byte> md5sum(const string &data)
 {
-	DWORD size = 20;
-	vector<unsigned char> hash(size, 0);
-	CertGetCertificateContextProperty(cert, CERT_SHA1_HASH_PROP_ID, hash.data(), &size);
-	GUID g;
-	// convert UUID to local byte order
-	memcpy(&g, hash.data(), sizeof(g));
-	g.Data1 = ntohl(g.Data1);
-	g.Data2 = ntohs(g.Data2);
-	g.Data3 = ntohs(g.Data3);
+	vector<byte> result;
+	HCRYPTPROV hProv = 0;
+	if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+		return result;
 
-	// put in the variant and version bits
-	g.Data3 &= 0xFFF;
-	g.Data3 |= (5 << 12);
-	g.Data4[0] &= 0x3F;
-	g.Data4[0] |= 0x80;
+	HCRYPTHASH hHash = 0;
+	if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
+	{
+		CryptReleaseContext(hProv, 0);
+		return result;
+	}
 
-	swprintf(guid, guidsize / 2, L"%8.8x-%4.4x-%4.4x-%2.2x%2.2x-%2.2x%2.2x%2.2x%2.2x%2.2x%2.2x",
-		g.Data1, g.Data2, g.Data3, g.Data4[0], g.Data4[1], g.Data4[2],
-		g.Data4[3], g.Data4[4], g.Data4[5], g.Data4[6], g.Data4[7]);
+	if (!CryptHashData(hHash, PBYTE(data.c_str()), DWORD(data.size()), 0))
+	{
+		CryptReleaseContext(hProv, 0);
+		CryptDestroyHash(hHash);
+		return result;
+	}
+
+	DWORD md5size = 16;
+	result.resize(md5size);
+	if (!CryptGetHashParam(hHash, HP_HASHVAL, result.data(), &md5size, 0))
+		result.clear();
+
+	CryptReleaseContext(hProv, 0);
+	CryptDestroyHash(hHash);
+
+	return result;
+}
+
+static void getMD5GUID(const string &data, PWCHAR guid)
+{
+	string result = toHex(md5sum(data));
+	for (size_t i = 0; i < result.size(); ++i)
+		guid[i] = result[i];
 }
 
 static map<uint8_t, vector<byte>> parseFCI(const vector<byte> &data)
@@ -1164,7 +1180,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 			ZeroMemory(*ppbData, *pcbData);
 
 			PCONTAINER_MAP_RECORD c1 = PCONTAINER_MAP_RECORD(*ppbData);
-			getSHA1GUID(files->auth, c1->wszGuid, sizeof(c1->wszGuid));
+			getMD5GUID(string((char*)files->cardid) + "_AUT", c1->wszGuid);
 			c1->bFlags = CONTAINER_MAP_VALID_CONTAINER | CONTAINER_MAP_DEFAULT_CONTAINER;
 			if (isECDSAPubKey(files->auth))
 				c1->wSigKeySizeBits = WORD(keySize(pCardData, files->auth));
@@ -1172,7 +1188,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 				c1->wKeyExchangeKeySizeBits = WORD(keySize(pCardData, files->auth));
 
 			PCONTAINER_MAP_RECORD c2 = PCONTAINER_MAP_RECORD(*ppbData + sizeof(CONTAINER_MAP_RECORD));
-			getSHA1GUID(files->sign, c2->wszGuid, sizeof(c1->wszGuid));
+			getMD5GUID(string((char*)files->cardid) + "_SIG", c2->wszGuid);
 			c2->bFlags = CONTAINER_MAP_VALID_CONTAINER;
 			c2->wSigKeySizeBits = WORD(keySize(pCardData, files->sign));
 
