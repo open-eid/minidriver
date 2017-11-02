@@ -1,6 +1,6 @@
 param(
   [string]$buildnr = "0",
-  [string]$version = "3.12.0.$buildnr",
+  [string]$version = "3.12.1.$buildnr",
   [string]$date = $(Get-Date -format "MM\/dd\/yyyy"),
   [string]$target = "Package",
   [string]$driver = "$target\minidriver",

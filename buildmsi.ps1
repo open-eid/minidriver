@@ -1,8 +1,8 @@
-#powershell -ExecutionPolicy ByPass -File buildmsi.ps1 -msiversion 3.12.0.0
+#powershell -ExecutionPolicy ByPass -File buildmsi.ps1 -msiversion 3.12.1.0
 param(
    [string]$candle = "$env:WIX\bin\candle.exe",
    [string]$light = "$env:WIX\bin\light.exe",
-   [string]$msiversion = "3.12.0.77",
+   [string]$msiversion = "3.12.1.0",
    [string]$sign = $null
 )
 
