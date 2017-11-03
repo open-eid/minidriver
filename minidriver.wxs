@@ -26,12 +26,10 @@
     </Property>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Component Id="RemoveMinidriverRegistrationComponentX86" Guid="4EEC213A-7D2C-4062-9EEF-BA18BFEB7F12" Win64="no" Transitive="yes">
-        <Condition><![CDATA[NOT Installed]]></Condition>
         <?include minidriver.wxi?>
       </Component>
 <?if $(var.Platform) = "x64" ?>
       <Component Id="RemoveMinidriverRegistrationComponentX64" Guid="B0DFF274-B96A-48f1-89F1-400A271770DB" Win64="yes" Transitive="yes">
-        <Condition><![CDATA[NOT Installed]]></Condition>
         <?include minidriver.wxi?>
       </Component>
 

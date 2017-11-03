@@ -3,3 +3,4 @@
 Package/
 *.zip
 *sdf
+*.ipch
