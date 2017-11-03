@@ -28,4 +28,7 @@
     Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (1.0 warm ATR)"/>
   <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
     Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (1.1 MULTOS cold ATR)"/>
+  <!-- same as SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (3.0 JavaCard dev3 warm ATR) -->
+  <RemoveRegistryKey Root="HKLM" Action="removeOnInstall"
+    Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EstEID National ID Card (3.5 JavaCard warm ATR)"/>
 </Include>

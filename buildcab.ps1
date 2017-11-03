@@ -41,12 +41,11 @@ function makecab($dir, $cab)
 & $msbuild /nologo /verbosity:quiet "/p:Configuration=Release;Platform=X64;BUILD_NUMBER=$buildnr" esteidcm.sln
 
 Remove-Item $driver -Force -Recurse > $null
-New-Item -ItemType directory -Path "$driver\x86" > $null
-New-Item -ItemType directory -Path "$driver\x64" > $null
-Copy-Item "Release\esteidcm.dll" "$driver\x86\esteidcm_32.dll"
-Copy-Item "x64\Release\esteidcm.dll" "$driver\x64\esteidcm_64.dll"
-Copy-Item "Win7Release\atrfiltr.sys" "$driver\x86\atrfiltr_32.sys"
-Copy-Item "x64\Win7Release\atrfiltr.sys" "$driver\x64\atrfiltr_64.sys"
+New-Item -ItemType directory -Path "$driver" > $null
+Copy-Item "Release\esteidcm.dll" "$driver\esteidcm_32.dll"
+Copy-Item "x64\Release\esteidcm.dll" "$driver\esteidcm_64.dll"
+Copy-Item "Win7Release\atrfiltr.sys" "$driver\atrfiltr_32.sys"
+Copy-Item "x64\Win7Release\atrfiltr.sys" "$driver\atrfiltr_64.sys"
 Copy-Item "esteidcm.inf" "$driver\esteidcm.inf"
 
 & $stampinf -f "$driver\esteidcm.inf" -d $date -v $version
@@ -56,4 +55,7 @@ if($sign) {
   & signtool.exe sign /a /v /s MY /n "$sign" /fd SHA256 /du http://installer.id.ee `
     /tr http://sha256timestamp.ws.symantec.com/sha256/timestamp /td SHA256 "esteidcm_$version.cab"
 }
+
+Copy-Item "Release\esteidcm.pdb" "$driver\esteidcm_32.pdb"
+Copy-Item "x64\Release\esteidcm.pdb" "$driver\esteidcm_64.pdb"
 & $7zip "a" "-tzip" "-r" "esteidcm.$version.zip", "$target" > $null
