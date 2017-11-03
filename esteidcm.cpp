@@ -754,7 +754,8 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 		*p = 0;
 		RETURN(NO_ERROR);
 	}
-	if (wcscmp(CP_CARD_GUID, wszProperty) == 0)
+	if (wcscmp(CP_CARD_GUID, wszProperty) == 0 ||
+		wcscmp(CP_CARD_SERIAL_NO, wszProperty) == 0)
 	{
 		if (dwFlags)
 			RETURN(SCARD_E_INVALID_PARAMETER);
@@ -962,7 +963,8 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 			RETURN(SCARD_E_INVALID_PARAMETER);
 		if ((PinId == AUTH_PIN_ID && cbPinData < 4) ||
 			(PinId == SIGN_PIN_ID && cbPinData < 5) ||
-			cbPinData > 12)
+			cbPinData > 12 ||
+			!std::all_of(pbPinData, pbPinData + cbPinData, std::isdigit))
 			RETURN(SCARD_W_WRONG_CHV);
 		if (remaining == 0)
 			RETURN(SCARD_W_CHV_BLOCKED);
@@ -1326,7 +1328,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 	case AT_ECDSA_P521: isRSA = false; break;
 	default: RETURN(SCARD_E_INVALID_PARAMETER);
 	}	
-	DWORD dwFlagMask = CARD_PADDING_INFO_PRESENT | CARD_BUFFER_SIZE_ONLY | CARD_PADDING_NONE | CARD_PADDING_PKCS1 | CARD_PADDING_PSS;
+	DWORD dwFlagMask = CARD_PADDING_INFO_PRESENT | CARD_BUFFER_SIZE_ONLY | CARD_PADDING_NONE | CARD_PADDING_PKCS1;
 	if (pInfo->dwSigningFlags & (~dwFlagMask))
 		RETURN(SCARD_E_INVALID_PARAMETER);
 
