@@ -37,6 +37,7 @@
 #include "version.h"
 
 #include <algorithm>
+#include <cctype>
 #include <io.h>
 #include <iomanip>
 #include <map>
