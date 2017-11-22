@@ -60,6 +60,10 @@
             <File Id="esteidcmINFPreW10" Source="minidriver\PreW10\esteidcm.inf" KeyPath="yes"/>
             <File Id="esteidcmCATPreW10" Source="minidriver\PreW10\esteidcm.cat" />
             <File Id="esteidcm64CATPreW10" Source="minidriver\PreW10\esteidcm64.cat" />
+            <File Id="esteidcm64DLLPreW10" Source="minidriver\PreW10\esteidcm_64.dll" />
+            <File Id="atrfiltr64DLLPreW10" Source="minidriver\PreW10\atrfiltr_64.sys" />
+            <File Id="esteidcm86DLLPreW10" Source="minidriver\PreW10\esteidcm_32.dll" />
+            <File Id="atrfiltr86DLLPreW10" Source="minidriver\PreW10\atrfiltr_32.sys" />
             <difx:Driver PlugAndPlayPrompt="no" ForceInstall="yes"/>
           </Component>
           <Component Id="miniDriverW10" Guid="b862d285-abe9-4f3d-a057-59542496d27a">
@@ -67,34 +71,12 @@
             <File Id="esteidcmINFW10" Source="minidriver\W10\esteidcm.inf" KeyPath="yes"/>
             <File Id="esteidcmCATW10" Source="minidriver\W10\esteidcm.cat" />
             <File Id="esteidcm64CATW10" Source="minidriver\W10\esteidcm64.cat" />
+            <File Id="esteidcm64DLLW10" Source="minidriver\W10\esteidcm_64.dll" />
+            <File Id="atrfiltr64DLLW10" Source="minidriver\W10\atrfiltr_64.sys" />
+            <File Id="esteidcm86DLLW10" Source="minidriver\W10\esteidcm_32.dll" />
+            <File Id="atrfiltr86DLLW10" Source="minidriver\W10\atrfiltr_32.sys" />
             <difx:Driver PlugAndPlayPrompt="no" ForceInstall="yes"/>
           </Component>
-
-          <Directory Id="minidriver_x64" Name="x64">
-            <Component Id="miniDriverPreW10x64Components" Guid="c0796738-8525-40e8-bfb0-ae99e17172ec">
-              <Condition><![CDATA[(NOT USER32VERSION)]]></Condition>
-              <File Id="esteidcm64DLLPreW10" Source="minidriver\PreW10\x64\esteidcm_64.dll" />
-              <File Id="atrfiltr64DLLPreW10" Source="minidriver\PreW10\x64\atrfiltr_64.sys" />
-            </Component>
-            <Component Id="miniDriverW10x64Components" Guid="1afa6d46-7d49-4ae7-a362-e38620bc6f10">
-              <Condition><![CDATA[(USER32VERSION)]]></Condition>
-              <File Id="esteidcm64DLLW10" Source="minidriver\W10\x64\esteidcm_64.dll" />
-              <File Id="atrfiltr64DLLW10" Source="minidriver\W10\x64\atrfiltr_64.sys" />
-            </Component>
-          </Directory>
-
-          <Directory Id="minidriver_x86" Name="x86">
-            <Component Id="miniDriverPreW10x86Components" Guid="b3478d0c-b848-41fc-a3c7-4532253b60f1">
-              <Condition><![CDATA[(NOT USER32VERSION)]]></Condition>
-              <File Id="esteidcm86DLLPreW10" Source="minidriver\PreW10\x86\esteidcm_32.dll" />
-              <File Id="atrfiltr86DLLPreW10" Source="minidriver\PreW10\x86\atrfiltr_32.sys" />
-            </Component>
-            <Component Id="miniDriverW10x86Components" Guid="70ef6f86-532a-4924-a747-35306a3adbdb">
-              <Condition><![CDATA[(USER32VERSION)]]></Condition>
-              <File Id="esteidcm86DLLW10" Source="minidriver\W10\x86\esteidcm_32.dll" />
-              <File Id="atrfiltr86DLLW10" Source="minidriver\W10\x86\atrfiltr_32.sys" />
-            </Component>
-          </Directory>
         </Directory>
       </Directory>
     </Directory>
@@ -118,10 +100,6 @@
     <Feature Id="minidriver" Title="Estonian Minidriver">
       <ComponentRef Id="miniDriverPreW10"/>
       <ComponentRef Id="miniDriverW10"/>
-      <ComponentRef Id="miniDriverPreW10x86Components"/>
-      <ComponentRef Id="miniDriverPreW10x64Components"/>
-      <ComponentRef Id="miniDriverW10x86Components"/>
-      <ComponentRef Id="miniDriverW10x64Components"/>
       <?if $(var.Platform) = "x64" ?>
       <ComponentRef Id="RemoveMinidriverRegistrationComponentX64"/>
       <ComponentRef Id="EnableScPnP64"/>
