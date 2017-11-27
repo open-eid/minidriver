@@ -338,13 +338,7 @@ static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT c
 	if (!oh)
 		return nullptr;
 	oh->cbKey = (PublicKey->cbData - 1) / 2;
-	switch (oh->cbKey * 8)
-	{
-	case 256: oh->dwMagic = ecdsa ? BCRYPT_ECDSA_PUBLIC_P256_MAGIC : BCRYPT_ECDH_PUBLIC_P256_MAGIC; break;
-	case 384: oh->dwMagic = ecdsa ? BCRYPT_ECDSA_PUBLIC_P384_MAGIC : BCRYPT_ECDH_PUBLIC_P384_MAGIC; break;
-	case 521: oh->dwMagic = ecdsa ? BCRYPT_ECDSA_PUBLIC_P521_MAGIC : BCRYPT_ECDH_PUBLIC_P521_MAGIC; break;
-	default: oh->dwMagic = ecdsa ? BCRYPT_ECDSA_PUBLIC_P384_MAGIC : BCRYPT_ECDH_PUBLIC_P384_MAGIC; break;
-	}
+	oh->dwMagic = ecdsa ? BCRYPT_ECDSA_PUBLIC_P384_MAGIC : BCRYPT_ECDH_PUBLIC_P384_MAGIC;
 	CopyMemory(PBYTE(oh) + sizeof(BCRYPT_ECCKEY_BLOB), PublicKey->pbData + 1, PublicKey->cbData - 1);
 	return oh;
 }
@@ -1243,12 +1237,8 @@ DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData, __in DWORD dwKeySpec, 
 			keySize(pCardData, dwKeySpec == AT_KEYEXCHANGE ? files->auth : files->sign);
 		pKeySizes->dwIncrementalBitlen = 0;
 		break;
-	case AT_ECDSA_P256:
 	case AT_ECDSA_P384:
-	case AT_ECDSA_P521:
-	case AT_ECDHE_P256:
 	case AT_ECDHE_P384:
-	case AT_ECDHE_P521:
 		pKeySizes->dwDefaultBitlen = pKeySizes->dwMaximumBitlen = pKeySizes->dwMinimumBitlen =
 			keySize(pCardData, files->auth);
 		pKeySizes->dwIncrementalBitlen = 1;
@@ -1337,12 +1327,8 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 	{
 	case AT_KEYEXCHANGE:
 	case AT_SIGNATURE: break;
-	case AT_ECDSA_P256:
 	case AT_ECDSA_P384:
-	case AT_ECDSA_P521:
-	case AT_ECDHE_P256:
-	case AT_ECDHE_P384:
-	case AT_ECDHE_P521: isRSA = false; break;
+	case AT_ECDHE_P384: isRSA = false; break;
 	default: RETURN(SCARD_E_INVALID_PARAMETER);
 	}	
 	DWORD dwFlagMask = CARD_PADDING_INFO_PRESENT | CARD_BUFFER_SIZE_ONLY | CARD_PADDING_NONE | CARD_PADDING_PKCS1;
