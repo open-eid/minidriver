@@ -1455,6 +1455,8 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, __in PCARD_DERIVE_KEY pAgr
 	_log("dwVersion=%u, pwszKDF=%S, bSecretAgreementIndex=%u, pParameterList=0x%08X, pwszAlgId=%S, dwKeyLen=%u",
 		pAgreementInfo->dwVersion, pAgreementInfo->pwszKDF, pAgreementInfo->bSecretAgreementIndex,
 		pAgreementInfo->pParameterList, pAgreementInfo->pwszAlgId, pAgreementInfo->dwKeyLen);
+	if (pAgreementInfo->dwVersion < CARD_DERIVE_KEY_VERSION)
+		RETURN(ERROR_REVISION_MISMATCH);
 	Files *files = (Files*)pCardData->pvVendorSpecific;
 	auto dhAgreement = files->dhAgreements.find(pAgreementInfo->bSecretAgreementIndex);
 	if (dhAgreement == files->dhAgreements.cend())
