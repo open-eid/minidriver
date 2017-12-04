@@ -131,6 +131,15 @@ struct Result {
 	bool operator !() const { return !(SW1 == 0x90 && SW2 == 0x00); }
 };
 
+static int32_t ntohl(int32_t source)
+{
+	return 0
+		| ((source & 0x000000ff) << 24)
+		| ((source & 0x0000ff00) << 8)
+		| ((source & 0x00ff0000) >> 8)
+		| ((source & 0xff000000) >> 24);
+}
+
 static void log(const char *functionName, const char *fileName, int lineNumber, string message, ...)
 {
 	static const wstring path = []{
