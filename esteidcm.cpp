@@ -23,6 +23,8 @@
 #define _log(...) log(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__)
 #define DECLARE_UNSUPPORTED(name) DWORD WINAPI name { RETURN(SCARD_E_UNSUPPORTED_FEATURE); }
 
+typedef HRESULT (*f_TaskDialogIndirect)(_In_ const TASKDIALOGCONFIG *pTaskConfig, _Out_opt_ int *pnButton, _Out_opt_ int *pnRadioButton, _Out_opt_ BOOL *pfVerificationFlagChecked);
+
 static const BYTE cardapps[] = { 1, 'm', 's', 'c', 'p', 0, 0, 0, 0 };
 static const BYTE cardcf[] = { 0, 0, 0, 0, 0, 0 };
 
@@ -497,7 +499,13 @@ DWORD WINAPI CreateProgressBar(LPVOID lpParam)
 		break;
 	}
 	_log("Create Progress Dialog");
-	return TaskDialogIndirect(&config, nullptr, nullptr, nullptr);
+	HMODULE h = LoadLibrary(L"comctl32.dll");
+	if (!h)
+		return 0;
+	f_TaskDialogIndirect f = f_TaskDialogIndirect(GetProcAddress(h, "TaskDialogIndirect"));
+	if (!f)
+		return 0;
+	return f(&config, nullptr, nullptr, nullptr);
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
