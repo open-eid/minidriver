@@ -12,8 +12,6 @@
 
 #include "stdafx.h"
 
-#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
 #define AUTH_PIN_ID ROLE_USER
 #define SIGN_PIN_ID 3
 #define PUKK_PIN_ID ROLE_ADMIN
@@ -486,7 +484,16 @@ DWORD WINAPI CreateProgressBar(LPVOID lpParam)
 		break;
 	}
 	_log("Create Progress Dialog");
-	return TaskDialogIndirect(&config, nullptr, nullptr, nullptr);
+	DWORD result = 0;
+	HMODULE h = LoadLibrary(L"comctl32.dll");
+	if (!h)
+		return result;
+	typedef HRESULT (WINAPI *f_TaskDialogIndirect)(_In_ const TASKDIALOGCONFIG *pTaskConfig,
+		_Out_opt_ int *pnButton, _Out_opt_ int *pnRadioButton, _Out_opt_ BOOL *pfVerificationFlagChecked);
+	if (f_TaskDialogIndirect f = f_TaskDialogIndirect(GetProcAddress(h, "TaskDialogIndirect")))
+		result = f(&config, nullptr, nullptr, nullptr);
+	FreeLibrary(h);
+	return result;
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
