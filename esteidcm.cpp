@@ -354,33 +354,18 @@ static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT c
 
 static vector<byte> md5sum(const string &data)
 {
-	vector<byte> result;
-	HCRYPTPROV hProv = 0;
-	if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
-		return result;
-
-	HCRYPTHASH hHash = 0;
-	if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
-	{
-		CryptReleaseContext(hProv, 0);
-		return result;
-	}
-
-	if (!CryptHashData(hHash, PBYTE(data.c_str()), DWORD(data.size()), 0))
-	{
-		CryptReleaseContext(hProv, 0);
-		CryptDestroyHash(hHash);
-		return result;
-	}
-
-	DWORD md5size = 16;
-	result.resize(md5size);
-	if (!CryptGetHashParam(hHash, HP_HASHVAL, result.data(), &md5size, 0))
+	vector<byte> result(16, 0);
+	BCRYPT_ALG_HANDLE hAlgorithm = 0;
+	BCRYPT_HASH_HANDLE hHash = 0;
+	if (BCryptOpenAlgorithmProvider(&hAlgorithm, BCRYPT_MD5_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0) ||
+		BCryptCreateHash(hAlgorithm, &hHash, nullptr, 0, nullptr, 0, 0) ||
+		BCryptHashData(hHash, PBYTE(data.c_str()), DWORD(data.size()), 0) ||
+		BCryptFinishHash(hHash, result.data(), ULONG(result.size()), 0))
 		result.clear();
-
-	CryptReleaseContext(hProv, 0);
-	CryptDestroyHash(hHash);
-
+	if (hHash)
+		BCryptDestroyHash(hHash);
+	if (hAlgorithm)
+		BCryptCloseAlgorithmProvider(hAlgorithm, 0);
 	return result;
 }
 
@@ -1556,21 +1541,13 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, __in PCARD_DERIVE_KEY pAgr
 		RETURN(NO_ERROR);
 	}
 
-	size = sizeof(DWORD);
-	DWORD bufSize = 0;
-	if (BCryptGetProperty(hAlgorithm, BCRYPT_OBJECT_LENGTH, PUCHAR(&bufSize), size, &size, 0))
-	{
-		BCryptCloseAlgorithmProvider(hAlgorithm, 0);
-		RETURN(SCARD_E_INVALID_PARAMETER);
-	}
-
-	vector<byte> key, buf(bufSize, 0), hash(hashLen, 0);
+	vector<byte> key, hash(hashLen, 0);
 	vector<byte> *z = &dhAgreement->second;
 	if (wcscmp(BCRYPT_KDF_HASH, pAgreementInfo->pwszKDF) == 0 ||
 		wcscmp(BCRYPT_KDF_HMAC, pAgreementInfo->pwszKDF) == 0)
 	{
 		BCRYPT_HASH_HANDLE hHash = 0;
-		if (BCryptCreateHash(hAlgorithm, &hHash, buf.data(), bufSize, hmackey.data(), ULONG(hmackey.size()), 0))
+		if (BCryptCreateHash(hAlgorithm, &hHash, nullptr, 0, hmackey.data(), ULONG(hmackey.size()), 0))
 		{
 			BCryptCloseAlgorithmProvider(hAlgorithm, 0);
 			RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1594,7 +1571,7 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, __in PCARD_DERIVE_KEY pAgr
 		{
 			uint32_t intToFourBytes = ntohl(i);
 			BCRYPT_HASH_HANDLE hHash = 0;
-			if (BCryptCreateHash(hAlgorithm, &hHash, buf.data(), bufSize, nullptr, 0, 0))
+			if (BCryptCreateHash(hAlgorithm, &hHash, nullptr, 0, nullptr, 0, 0))
 			{
 				BCryptCloseAlgorithmProvider(hAlgorithm, 0);
 				RETURN(SCARD_E_INVALID_PARAMETER);
