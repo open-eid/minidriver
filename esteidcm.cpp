@@ -119,16 +119,26 @@ typedef struct
 
 struct Files
 {
-	bool pinpadEnabled;
+	bool pinpadEnabled = true;
 	BYTE cardid[16];
-	PCCERT_CONTEXT auth, sign;
-	HWND cp;
+	PCCERT_CONTEXT auth = nullptr, sign = nullptr;
+	HWND cp = nullptr;
+	map<byte, vector<byte>> dhAgreements;
 };
 
 struct Result {
 	byte SW1, SW2; vector<byte> data;
 	bool operator !() const { return !(SW1 == 0x90 && SW2 == 0x00); }
 };
+
+static int32_t ntohl(int32_t source)
+{
+	return 0
+		| ((source & 0x000000ff) << 24)
+		| ((source & 0x0000ff00) << 8)
+		| ((source & 0x00ff0000) >> 8)
+		| ((source & 0xff000000) >> 24);
+}
 
 static void log(const char *functionName, const char *fileName, int lineNumber, string message, ...)
 {
@@ -329,7 +339,7 @@ static DWORD keySize(PCARD_DATA pCardData, PCCERT_CONTEXT cert)
 	}
 }
 
-static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT cert, DWORD &sw)
+static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT cert, DWORD &sw, bool ecdsa)
 {
 	PCRYPT_BIT_BLOB PublicKey = &cert->pCertInfo->SubjectPublicKeyInfo.PublicKey;
 	sw = DWORD(sizeof(BCRYPT_ECCKEY_BLOB) + (PublicKey->cbData - 1));
@@ -337,46 +347,25 @@ static PBCRYPT_ECCKEY_BLOB pubKeyECStruct(PCARD_DATA pCardData, PCCERT_CONTEXT c
 	if (!oh)
 		return nullptr;
 	oh->cbKey = (PublicKey->cbData - 1) / 2;
-	switch (oh->cbKey * 8)
-	{
-	case 256: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P256_MAGIC; break;
-	case 384: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P384_MAGIC; break;
-	case 521: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P521_MAGIC; break;
-	default: oh->dwMagic = BCRYPT_ECDSA_PUBLIC_P384_MAGIC; break;
-	}
+	oh->dwMagic = ecdsa ? BCRYPT_ECDSA_PUBLIC_P384_MAGIC : BCRYPT_ECDH_PUBLIC_P384_MAGIC;
 	CopyMemory(PBYTE(oh) + sizeof(BCRYPT_ECCKEY_BLOB), PublicKey->pbData + 1, PublicKey->cbData - 1);
 	return oh;
 }
 
 static vector<byte> md5sum(const string &data)
 {
-	vector<byte> result;
-	HCRYPTPROV hProv = 0;
-	if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
-		return result;
-
-	HCRYPTHASH hHash = 0;
-	if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
-	{
-		CryptReleaseContext(hProv, 0);
-		return result;
-	}
-
-	if (!CryptHashData(hHash, PBYTE(data.c_str()), DWORD(data.size()), 0))
-	{
-		CryptReleaseContext(hProv, 0);
-		CryptDestroyHash(hHash);
-		return result;
-	}
-
-	DWORD md5size = 16;
-	result.resize(md5size);
-	if (!CryptGetHashParam(hHash, HP_HASHVAL, result.data(), &md5size, 0))
+	vector<byte> result(16, 0);
+	BCRYPT_ALG_HANDLE hAlgorithm = 0;
+	BCRYPT_HASH_HANDLE hHash = 0;
+	if (BCryptOpenAlgorithmProvider(&hAlgorithm, BCRYPT_MD5_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0) ||
+		BCryptCreateHash(hAlgorithm, &hHash, nullptr, 0, nullptr, 0, 0) ||
+		BCryptHashData(hHash, PBYTE(data.c_str()), DWORD(data.size()), 0) ||
+		BCryptFinishHash(hHash, result.data(), ULONG(result.size()), 0))
 		result.clear();
-
-	CryptReleaseContext(hProv, 0);
-	CryptDestroyHash(hHash);
-
+	if (hHash)
+		BCryptDestroyHash(hHash);
+	if (hAlgorithm)
+		BCryptCloseAlgorithmProvider(hAlgorithm, 0);
 	return result;
 }
 
@@ -574,15 +563,16 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		RETURN(SCARD_E_FILE_NOT_FOUND);
 	_log("cardid: " + cardid);
 
-	Files *files = (Files*)(pCardData->pvVendorSpecific = pCardData->pfnCspAlloc(sizeof(Files)));
+	Files *files = new Files;
+	pCardData->pvVendorSpecific = files;
 	if (!pCardData->pvVendorSpecific)
 		RETURN(ERROR_NOT_ENOUGH_MEMORY);
-	files->pinpadEnabled = true;
 	files->auth = CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, auth.data(), DWORD(auth.size()));
 	files->sign = CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, sign.data(), DWORD(sign.size()));
 	if (!files->auth || !files->sign)
 		RETURN(ERROR_NOT_ENOUGH_MEMORY);
-	memcpy(files->cardid, cardid.c_str(), cardid.size());
+	ZeroMemory(files->cardid, sizeof(files->cardid));
+	CopyMemory(files->cardid, cardid.c_str(), cardid.size());
 
 	HKEY rootKey = nullptr;
 	DWORD lpData = 0;
@@ -624,10 +614,10 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 
 	pCardData->pfnCardSignData = CardSignData;
 	pCardData->pfnCardRSADecrypt = CardRSADecrypt;
-	pCardData->pfnCardConstructDHAgreement = nullptr;
+	pCardData->pfnCardConstructDHAgreement = isECDSAPubKey(files->auth) ? CardConstructDHAgreement : nullptr;
 
-	pCardData->pfnCardDeriveKey = nullptr;
-	pCardData->pfnCardDestroyDHAgreement = nullptr;
+	pCardData->pfnCardDeriveKey = isECDSAPubKey(files->auth) ? CardDeriveKey : nullptr;
+	pCardData->pfnCardDestroyDHAgreement = isECDSAPubKey(files->auth) ? CardDestroyDHAgreement : nullptr;
 	pCardData->pfnCspGetDHAgreement = nullptr;
 
 	pCardData->pfnCardGetChallengeEx = CardGetChallengeEx;
@@ -661,7 +651,7 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA pCardData)
 	{
 		if (files->auth) CertFreeCertificateContext(files->auth);
 		if (files->sign) CertFreeCertificateContext(files->sign);
-		pCardData->pfnCspFree(pCardData->pvVendorSpecific);
+		delete files;
 	}
 	RETURN(NO_ERROR);
 }
@@ -926,18 +916,17 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	{
 	case AUTH_CONTAINER_INDEX:
 	{
-		if (isECDSAPubKey(files->auth))
-			pContainerInfo->pbSigPublicKey = PBYTE(pubKeyECStruct(pCardData, files->auth, pContainerInfo->cbSigPublicKey));
-		else
-			pContainerInfo->pbKeyExPublicKey = PBYTE(pubKeyRSAStruct(pCardData, files->auth, pContainerInfo->cbKeyExPublicKey, CALG_RSA_KEYX));
-		if (!pContainerInfo->pbKeyExPublicKey && !pContainerInfo->pbSigPublicKey)
+		pContainerInfo->pbKeyExPublicKey = isECDSAPubKey(files->auth) ?
+			PBYTE(pubKeyECStruct(pCardData, files->auth, pContainerInfo->cbKeyExPublicKey, false)) :
+			PBYTE(pubKeyRSAStruct(pCardData, files->auth, pContainerInfo->cbKeyExPublicKey, CALG_RSA_KEYX));
+		if (!pContainerInfo->pbKeyExPublicKey)
 			RETURN(ERROR_NOT_ENOUGH_MEMORY);
 		break;
 	}
 	case SIGN_CONTAINER_INDEX:
 	{
 		pContainerInfo->pbSigPublicKey = isECDSAPubKey(files->sign) ?
-			PBYTE(pubKeyECStruct(pCardData, files->sign, pContainerInfo->cbSigPublicKey)) :
+			PBYTE(pubKeyECStruct(pCardData, files->sign, pContainerInfo->cbSigPublicKey, true)) :
 			PBYTE(pubKeyRSAStruct(pCardData, files->sign, pContainerInfo->cbSigPublicKey, CALG_RSA_SIGN));
 		if (!pContainerInfo->pbSigPublicKey)
 			RETURN(ERROR_NOT_ENOUGH_MEMORY);
@@ -1089,7 +1078,7 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryNam
 	}
 	if (!_strcmpi(pszDirectoryName, szBASE_CSP_DIR))
 	{
-		static const char mscp_files[] = szCONTAINER_MAP_FILE "\0" szUSER_KEYEXCHANGE_CERT_PREFIX "00\0" szUSER_SIGNATURE_CERT_PREFIX "00\0" szUSER_SIGNATURE_CERT_PREFIX "01\0\0";
+		static const char mscp_files[] = szCONTAINER_MAP_FILE "\0" szUSER_KEYEXCHANGE_CERT_PREFIX "00\0" szUSER_SIGNATURE_CERT_PREFIX "01\0\0";
 		*pdwcbFileName = sizeof(mscp_files) - 1;
 		*pmszFileNames = LPSTR(pCardData->pfnCspAlloc(*pdwcbFileName));
 		if (!*pmszFileNames)
@@ -1182,10 +1171,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 			PCONTAINER_MAP_RECORD c1 = PCONTAINER_MAP_RECORD(*ppbData);
 			getMD5GUID(string((char*)files->cardid) + "_AUT", c1->wszGuid);
 			c1->bFlags = CONTAINER_MAP_VALID_CONTAINER | CONTAINER_MAP_DEFAULT_CONTAINER;
-			if (isECDSAPubKey(files->auth))
-				c1->wSigKeySizeBits = WORD(keySize(pCardData, files->auth));
-			else
-				c1->wKeyExchangeKeySizeBits = WORD(keySize(pCardData, files->auth));
+			c1->wKeyExchangeKeySizeBits = WORD(keySize(pCardData, files->auth));
 
 			PCONTAINER_MAP_RECORD c2 = PCONTAINER_MAP_RECORD(*ppbData + sizeof(CONTAINER_MAP_RECORD));
 			getMD5GUID(string((char*)files->cardid) + "_SIG", c2->wszGuid);
@@ -1194,8 +1180,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 
 			RETURN(NO_ERROR);
 		}
-		if ((!_strcmpi(pszFileName, szUSER_KEYEXCHANGE_CERT_PREFIX "00") && !isECDSAPubKey(files->auth)) ||
-			(!_strcmpi(pszFileName, szUSER_SIGNATURE_CERT_PREFIX "00") && isECDSAPubKey(files->auth)))
+		if (!_strcmpi(pszFileName, szUSER_KEYEXCHANGE_CERT_PREFIX "00"))
 		{
 			*pcbData = files->auth->cbCertEncoded;
 			*ppbData = PBYTE(pCardData->pfnCspAlloc(*pcbData));
@@ -1246,17 +1231,12 @@ DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData, __in DWORD dwKeySpec, 
 			keySize(pCardData, dwKeySpec == AT_KEYEXCHANGE ? files->auth : files->sign);
 		pKeySizes->dwIncrementalBitlen = 0;
 		break;
-	case AT_ECDSA_P256:
 	case AT_ECDSA_P384:
-	case AT_ECDSA_P521:
+	case AT_ECDHE_P384:
 		pKeySizes->dwDefaultBitlen = pKeySizes->dwMaximumBitlen = pKeySizes->dwMinimumBitlen =
 			keySize(pCardData, files->auth);
 		pKeySizes->dwIncrementalBitlen = 1;
 		break;
-	case AT_ECDHE_P256:
-	case AT_ECDHE_P384:
-	case AT_ECDHE_P521:
-		RETURN(SCARD_E_UNSUPPORTED_FEATURE);
 	default:
 		RETURN(SCARD_E_INVALID_PARAMETER);
 	}
@@ -1341,9 +1321,8 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 	{
 	case AT_KEYEXCHANGE:
 	case AT_SIGNATURE: break;
-	case AT_ECDSA_P256:
 	case AT_ECDSA_P384:
-	case AT_ECDSA_P521: isRSA = false; break;
+	case AT_ECDHE_P384: isRSA = false; break;
 	default: RETURN(SCARD_E_INVALID_PARAMETER);
 	}	
 	DWORD dwFlagMask = CARD_PADDING_INFO_PRESENT | CARD_BUFFER_SIZE_ONLY | CARD_PADDING_NONE | CARD_PADDING_PKCS1;
@@ -1428,6 +1407,214 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 	RETURN(NO_ERROR);
 }
 
+DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData, __in PCARD_DH_AGREEMENT_INFO pAgreementInfo)
+{
+	if (!pCardData || !pAgreementInfo || !pAgreementInfo->pbPublicKey)
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	_log("dwVersion=%u, bContainerIndex=%u, pbData=0x%08X, cbData=%u",
+		pAgreementInfo->dwVersion, pAgreementInfo->bContainerIndex, pAgreementInfo->pbPublicKey, pAgreementInfo->dwPublicKey);
+	if (pAgreementInfo->bContainerIndex >= 2)
+		RETURN(SCARD_E_NO_KEY_CONTAINER);
+
+	vector<byte> data{
+		0xA6, // Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
+		0x66, // Length of the Control reference Template
+		0x7F, // Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
+		0x49,
+		0x63, // Length of ephemeral public key Template
+		0x86, // External Public Key
+		0x61, // External Public Key Len
+		0x04, // Uncompressed
+	};
+	data.insert(data.end(), pAgreementInfo->pbPublicKey + sizeof(BCRYPT_ECCKEY_BLOB),
+		pAgreementInfo->pbPublicKey + pAgreementInfo->dwPublicKey);
+
+	vector<byte> cmd = { 0x00, 0x2A, 0x80, 0x86, byte(data.size()) };
+	cmd.insert(cmd.end(), data.cbegin(), data.cend());
+	Result result = transfer(cmd, pCardData->hScard);
+	if (!result)
+		RETURN(SCARD_W_SECURITY_VIOLATION);
+
+	Files *files = (Files*)pCardData->pvVendorSpecific;
+	pAgreementInfo->bSecretAgreementIndex = files->dhAgreements.empty() ? 1 : files->dhAgreements.rbegin()->first + 1;
+	files->dhAgreements.insert({ pAgreementInfo->bSecretAgreementIndex, result.data });
+	_log("Returning bSecretAgreementIndex=%u", pAgreementInfo->bSecretAgreementIndex);
+	RETURN(NO_ERROR);
+}
+
+DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, __in PCARD_DERIVE_KEY pAgreementInfo)
+{
+	if (!pCardData || !pAgreementInfo || !pAgreementInfo->pwszKDF)
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	_log("dwVersion=%u, pwszKDF=%S, bSecretAgreementIndex=%u, pParameterList=0x%08X, pwszAlgId=%S, dwKeyLen=%u",
+		pAgreementInfo->dwVersion, pAgreementInfo->pwszKDF, pAgreementInfo->bSecretAgreementIndex,
+		pAgreementInfo->pParameterList, pAgreementInfo->pwszAlgId, pAgreementInfo->dwKeyLen);
+	if (pAgreementInfo->dwVersion < CARD_DERIVE_KEY_VERSION)
+		RETURN(ERROR_REVISION_MISMATCH);
+	Files *files = (Files*)pCardData->pvVendorSpecific;
+	auto dhAgreement = files->dhAgreements.find(pAgreementInfo->bSecretAgreementIndex);
+	if (dhAgreement == files->dhAgreements.cend())
+		RETURN(SCARD_E_INVALID_PARAMETER);
+
+	vector<byte> prepend, append, hmackey, algID, partyUInfo, partyVInfo, suppPubInfo, suppPrivInfo;
+	ULONG keyBitLen = 0;
+	LPCWSTR algo = nullptr;
+	PBCryptBufferDesc params = PBCryptBufferDesc(pAgreementInfo->pParameterList);
+	for (ULONG i = 0; i < params->cBuffers; ++i)
+	{
+		PBCryptBuffer info = &params->pBuffers[i];
+		switch (info->BufferType)
+		{
+		case KDF_HASH_ALGORITHM:
+			algo = LPCWSTR(info->pvBuffer);
+			if (wcscmp(BCRYPT_SHA1_ALGORITHM, algo) &&
+				wcscmp(BCRYPT_SHA256_ALGORITHM, algo) &&
+				wcscmp(BCRYPT_SHA384_ALGORITHM, algo) &&
+				wcscmp(BCRYPT_SHA512_ALGORITHM, algo))
+				RETURN(SCARD_E_INVALID_PARAMETER);
+			break;
+		case KDF_SECRET_PREPEND: prepend.insert(prepend.cbegin(), PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_SECRET_APPEND: append.insert(append.cbegin(), PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_HMAC_KEY: hmackey.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_ALGORITHMID: algID.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_PARTYUINFO: partyUInfo.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_PARTYVINFO: partyVInfo.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_SUPPPUBINFO: suppPubInfo.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_SUPPPRIVINFO: suppPrivInfo.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+		case KDF_KEYBITLENGTH: keyBitLen = *PULONG(info->pvBuffer); break;
+		default: RETURN(SCARD_E_INVALID_PARAMETER);
+		}
+	}
+
+	if (wcscmp(BCRYPT_KDF_HASH, pAgreementInfo->pwszKDF) == 0 ||
+		wcscmp(BCRYPT_KDF_HMAC, pAgreementInfo->pwszKDF) == 0)
+	{
+		if (pAgreementInfo->dwFlags & KDF_USE_SECRET_AS_HMAC_KEY_FLAG)
+			hmackey = dhAgreement->second;
+		if ((wcscmp(BCRYPT_KDF_HMAC, pAgreementInfo->pwszKDF) == 0 && hmackey.empty()) ||
+			(wcscmp(BCRYPT_KDF_HASH, pAgreementInfo->pwszKDF) == 0 && !hmackey.empty()))
+			RETURN(SCARD_E_INVALID_PARAMETER);
+		if (!algo)
+			algo = BCRYPT_SHA1_ALGORITHM;
+	}
+	else if (wcscmp(BCRYPT_KDF_SP80056A_CONCAT, pAgreementInfo->pwszKDF) == 0)
+	{
+		if (!hmackey.empty())
+			RETURN(SCARD_E_INVALID_PARAMETER);
+		if (algID.empty() || partyUInfo.empty() || partyVInfo.empty())
+			RETURN(SCARD_E_INVALID_PARAMETER);
+		if (!algo)
+		{
+			switch (dhAgreement->second.size())
+			{
+			case 32: algo = BCRYPT_SHA256_ALGORITHM; break;
+			case 48: algo = BCRYPT_SHA384_ALGORITHM; break;
+			case 65:
+			case 66: algo = BCRYPT_SHA512_ALGORITHM; break;
+			default: algo = BCRYPT_SHA384_ALGORITHM; break;
+			}
+		}
+	}
+	else // if (wcscmp(BCRYPT_KDF_TLS_PRF, pAgreementInfo->pwszKDF) == 0)
+		RETURN(SCARD_E_INVALID_PARAMETER);
+
+	BCRYPT_ALG_HANDLE hAlgorithm = 0;
+	if (BCryptOpenAlgorithmProvider(&hAlgorithm, algo, MS_PRIMITIVE_PROVIDER, !hmackey.empty() ? BCRYPT_ALG_HANDLE_HMAC_FLAG : 0))
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	DWORD hashLen = 0;
+	DWORD size = sizeof(DWORD);
+	if (BCryptGetProperty(hAlgorithm, BCRYPT_HASH_LENGTH, PUCHAR(&hashLen), size, &size, 0))
+	{
+		BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	}
+
+	if (wcscmp(BCRYPT_KDF_SP80056A_CONCAT, pAgreementInfo->pwszKDF) != 0)
+		pAgreementInfo->cbDerivedKey = hashLen;
+	else if (keyBitLen)
+		pAgreementInfo->cbDerivedKey = (keyBitLen + 7) / 8;
+	else
+		pAgreementInfo->cbDerivedKey = DWORD(dhAgreement->second.size());
+	if (pAgreementInfo->dwFlags & CARD_BUFFER_SIZE_ONLY)
+	{
+		BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+		RETURN(NO_ERROR);
+	}
+
+	vector<byte> key, hash(hashLen, 0);
+	vector<byte> *z = &dhAgreement->second;
+	if (wcscmp(BCRYPT_KDF_HASH, pAgreementInfo->pwszKDF) == 0 ||
+		wcscmp(BCRYPT_KDF_HMAC, pAgreementInfo->pwszKDF) == 0)
+	{
+		BCRYPT_HASH_HANDLE hHash = 0;
+		if (BCryptCreateHash(hAlgorithm, &hHash, nullptr, 0, hmackey.data(), ULONG(hmackey.size()), 0))
+		{
+			BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+			RETURN(SCARD_E_INVALID_PARAMETER);
+		}
+		if (BCryptHashData(hHash, prepend.data(), ULONG(prepend.size()), 0) ||
+			BCryptHashData(hHash, z->data(), ULONG(z->size()), 0) ||
+			BCryptHashData(hHash, append.data(), ULONG(append.size()), 0) ||
+			BCryptFinishHash(hHash, hash.data(), ULONG(hash.size()), 0))
+		{
+			BCryptDestroyHash(hHash);
+			BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+			RETURN(SCARD_E_INVALID_PARAMETER);
+		}
+		BCryptDestroyHash(hHash);
+		key = hash;
+	}
+	else
+	{
+		uint32_t reps = uint32_t(ceil(double(pAgreementInfo->cbDerivedKey) / double(hashLen)));
+		for (uint32_t i = 1; i <= reps; i++)
+		{
+			uint32_t intToFourBytes = ntohl(i);
+			BCRYPT_HASH_HANDLE hHash = 0;
+			if (BCryptCreateHash(hAlgorithm, &hHash, nullptr, 0, nullptr, 0, 0))
+			{
+				BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+				RETURN(SCARD_E_INVALID_PARAMETER);
+			}
+			if (BCryptHashData(hHash, PUCHAR(&intToFourBytes), 4, 0) ||
+				BCryptHashData(hHash, z->data(), ULONG(z->size()), 0) ||
+				BCryptHashData(hHash, algID.data(), ULONG(algID.size()), 0) ||
+				BCryptHashData(hHash, partyUInfo.data(), ULONG(partyUInfo.size()), 0) ||
+				BCryptHashData(hHash, partyVInfo.data(), ULONG(partyVInfo.size()), 0) ||
+				BCryptHashData(hHash, suppPubInfo.data(), ULONG(suppPubInfo.size()), 0) ||
+				BCryptHashData(hHash, suppPrivInfo.data(), ULONG(suppPrivInfo.size()), 0) ||
+				BCryptFinishHash(hHash, hash.data(), ULONG(hash.size()), 0))
+			{
+				BCryptDestroyHash(hHash);
+				BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+				RETURN(SCARD_E_INVALID_PARAMETER);
+			}
+			BCryptDestroyHash(hHash);
+			key.insert(key.end(), hash.cbegin(), hash.cend());
+		}
+	}
+
+	BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+	pAgreementInfo->pbDerivedKey = PBYTE(pCardData->pfnCspAlloc(pAgreementInfo->cbDerivedKey));
+	if (!pAgreementInfo->pbDerivedKey)
+		RETURN(ERROR_NOT_ENOUGH_MEMORY);
+	CopyMemory(pAgreementInfo->pbDerivedKey, key.data(), pAgreementInfo->cbDerivedKey);
+	RETURN(NO_ERROR);
+}
+
+DWORD WINAPI CardDestroyDHAgreement(__in PCARD_DATA pCardData, __in BYTE bSecretAgreementIndex, __in DWORD dwFlags)
+{
+	if (!pCardData || dwFlags)
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	_log("bSecretAgreementIndex=%u", bSecretAgreementIndex);
+	Files *files = (Files*)pCardData->pvVendorSpecific;
+	auto dhAgreement = files->dhAgreements.find(bSecretAgreementIndex);
+	if (dhAgreement == files->dhAgreements.cend())
+		RETURN(SCARD_E_INVALID_PARAMETER);
+	files->dhAgreements.erase(dhAgreement);
+	RETURN(NO_ERROR);
+}
+
 
 
 DECLARE_UNSUPPORTED(CardGetChallenge(__in PCARD_DATA pCardData,
@@ -1489,10 +1676,6 @@ DECLARE_UNSUPPORTED(CardCreateContainerEx(__in PCARD_DATA pCardData,
 DECLARE_UNSUPPORTED(CardDeleteContainer(__in PCARD_DATA pCardData,
 	__in BYTE bContainerIndex,
 	__in DWORD dwReserved))
-DECLARE_UNSUPPORTED(CardConstructDHAgreement(__in PCARD_DATA pCardData,
-	__in PCARD_DH_AGREEMENT_INFO pAgreementInfo))
-DECLARE_UNSUPPORTED(CardDeriveKey(__in PCARD_DATA pCardData,
-	__in PCARD_DERIVE_KEY pAgreementInfo))
 DECLARE_UNSUPPORTED(CardUnblockPin(__in PCARD_DATA pCardData,
 	__in LPWSTR pwszUserId,
 	__in_bcount(cbAuthenticationData)PBYTE pbAuthenticationData,
@@ -1500,9 +1683,6 @@ DECLARE_UNSUPPORTED(CardUnblockPin(__in PCARD_DATA pCardData,
 	__in_bcount(cbNewPinData)PBYTE pbNewPinData,
 	__in DWORD cbNewPinData,
 	__in DWORD cRetryCount,
-	__in DWORD dwFlags))
-DECLARE_UNSUPPORTED(CardDestroyDHAgreement(__in PCARD_DATA pCardData,
-	__in BYTE bSecretAgreementIndex,
 	__in DWORD dwFlags))
 DECLARE_UNSUPPORTED(CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	__in DWORD dwFlags,

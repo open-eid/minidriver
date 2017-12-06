@@ -31,23 +31,21 @@
         <LoadingUnderCAPI>True</LoadingUnderCAPI>
         <LoadingUnderCNG>True</LoadingUnderCNG>
         <KeyImport>False</KeyImport>
-        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P256 AT_ECDSA_P384 AT_ECDSA_P521</KeyTypes>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P384 AT_ECDHE_P384</KeyTypes>
         <OnCardPadding>False</OnCardPadding>
         <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
         <SignHashAlgorithms>CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
         <SignHashFlags></SignHashFlags>
         <SignReturnBufferSize>True</SignReturnBufferSize>
-        <KDFTypes>HASH</KDFTypes>
-        <KDFHashAlgorithms>SHA1</KDFHashAlgorithms>
-        <KDFHMACflag>False</KDFHMACflag>
+        <KDFTypes>HASH HMAC SP800_56A_CONCAT</KDFTypes>
+        <KDFHashAlgorithms>SHA1 SHA256 SHA384 SHA512</KDFHashAlgorithms>
+        <KDFHMACflag>True</KDFHMACflag>
         <SupportsCardGetChallenge>False</SupportsCardGetChallenge>
         <SupportsCardAuthenticateChallenge>False</SupportsCardAuthenticateChallenge>
         <SupportsCardGetChallengeEx>False</SupportsCardGetChallengeEx>
         <SupportsCardUnblockPin>False</SupportsCardUnblockPin>
         <SupportsCardChangeAuthenticator>False</SupportsCardChangeAuthenticator>
         <SupportsCardChangeAuthenticatorEx>False</SupportsCardChangeAuthenticatorEx>
-        <SupportsCardConstructDHAgreement>False</SupportsCardConstructDHAgreement>
-        <SupportsCardDestroyDHAgreement>False</SupportsCardDestroyDHAgreement>
       </CardSupports>
     </CardDefaults>
     <TestSuiteDefaults>
@@ -109,23 +107,21 @@
         <LoadingUnderCAPI>True</LoadingUnderCAPI>
         <LoadingUnderCNG>True</LoadingUnderCNG>
         <KeyImport>False</KeyImport>
-        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P256 AT_ECDSA_P384 AT_ECDSA_P521</KeyTypes>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P384 AT_ECDHE_P384</KeyTypes>
         <OnCardPadding>False</OnCardPadding>
         <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
         <SignHashAlgorithms>CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
         <SignHashFlags></SignHashFlags>
         <SignReturnBufferSize>True</SignReturnBufferSize>
-        <KDFTypes>HASH</KDFTypes>
-        <KDFHashAlgorithms>SHA1</KDFHashAlgorithms>
-        <KDFHMACflag>False</KDFHMACflag>
+        <KDFTypes>HASH HMAC SP800_56A_CONCAT</KDFTypes>
+        <KDFHashAlgorithms>SHA1 SHA256 SHA384 SHA512</KDFHashAlgorithms>
+        <KDFHMACflag>True</KDFHMACflag>
         <SupportsCardGetChallenge>False</SupportsCardGetChallenge>
         <SupportsCardAuthenticateChallenge>False</SupportsCardAuthenticateChallenge>
         <SupportsCardGetChallengeEx>False</SupportsCardGetChallengeEx>
         <SupportsCardUnblockPin>False</SupportsCardUnblockPin>
         <SupportsCardChangeAuthenticator>False</SupportsCardChangeAuthenticator>
         <SupportsCardChangeAuthenticatorEx>False</SupportsCardChangeAuthenticatorEx>
-        <SupportsCardConstructDHAgreement>False</SupportsCardConstructDHAgreement>
-        <SupportsCardDestroyDHAgreement>False</SupportsCardDestroyDHAgreement>
       </CardSupports>
     </CardDefaults>
     <TestSuiteDefaults>
@@ -187,23 +183,21 @@
         <LoadingUnderCAPI>True</LoadingUnderCAPI>
         <LoadingUnderCNG>True</LoadingUnderCNG>
         <KeyImport>False</KeyImport>
-        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P256 AT_ECDSA_P384 AT_ECDSA_P521</KeyTypes>
+        <KeyTypes>AT_SIGNATURE AT_KEYEXCHANGE AT_ECDSA_P384 AT_ECDHE_P384</KeyTypes>
         <OnCardPadding>False</OnCardPadding>
         <PaddingAlgorithms>CARD_PADDING_PKCS1</PaddingAlgorithms>
         <SignHashAlgorithms>CALG_SHA1 CALG_SHA_256 CALG_SHA_384 CALG_SHA_512</SignHashAlgorithms>
         <SignHashFlags></SignHashFlags>
         <SignReturnBufferSize>True</SignReturnBufferSize>
-        <KDFTypes>HASH</KDFTypes>
-        <KDFHashAlgorithms>SHA1</KDFHashAlgorithms>
-        <KDFHMACflag>False</KDFHMACflag>
+        <KDFTypes>HASH HMAC SP800_56A_CONCAT</KDFTypes>
+        <KDFHashAlgorithms>SHA1 SHA256 SHA384 SHA512</KDFHashAlgorithms>
+        <KDFHMACflag>True</KDFHMACflag>
         <SupportsCardGetChallenge>False</SupportsCardGetChallenge>
         <SupportsCardAuthenticateChallenge>False</SupportsCardAuthenticateChallenge>
         <SupportsCardGetChallengeEx>False</SupportsCardGetChallengeEx>
         <SupportsCardUnblockPin>False</SupportsCardUnblockPin>
         <SupportsCardChangeAuthenticator>False</SupportsCardChangeAuthenticator>
         <SupportsCardChangeAuthenticatorEx>False</SupportsCardChangeAuthenticatorEx>
-        <SupportsCardConstructDHAgreement>False</SupportsCardConstructDHAgreement>
-        <SupportsCardDestroyDHAgreement>False</SupportsCardDestroyDHAgreement>
       </CardSupports>
     </CardDefaults>
     <TestSuiteDefaults>

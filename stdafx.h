@@ -30,7 +30,6 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
-#include <Winsock2.h>
 #include <Commctrl.h>
 
 #include "cardmod.h"
