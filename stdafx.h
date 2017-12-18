@@ -37,6 +37,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <iomanip>
 #include <map>
 #include <sstream>
