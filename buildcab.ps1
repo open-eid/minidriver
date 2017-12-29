@@ -43,7 +43,9 @@ function makecab($dir, $cab)
 Remove-Item $driver -Force -Recurse > $null
 New-Item -ItemType directory -Path "$driver" > $null
 Copy-Item "Release\esteidcm.dll" "$driver\esteidcm_32.dll"
+Copy-Item "Release\esteidcm.pdb" "$driver\esteidcm_32.pdb"
 Copy-Item "x64\Release\esteidcm.dll" "$driver\esteidcm_64.dll"
+Copy-Item "x64\Release\esteidcm.pdb" "$driver\esteidcm_64.pdb"
 Copy-Item "Win7Release\atrfiltr.sys" "$driver\atrfiltr_32.sys"
 Copy-Item "x64\Win7Release\atrfiltr.sys" "$driver\atrfiltr_64.sys"
 Copy-Item "esteidcm.inf" "$driver\esteidcm.inf"
@@ -56,6 +58,4 @@ if($sign) {
     /tr http://sha256timestamp.ws.symantec.com/sha256/timestamp /td SHA256 "esteidcm_$version.cab"
 }
 
-Copy-Item "Release\esteidcm.pdb" "$driver\esteidcm_32.pdb"
-Copy-Item "x64\Release\esteidcm.pdb" "$driver\esteidcm_64.pdb"
 & $7zip "a" "-tzip" "-r" "esteidcm.$version.zip", "$target" > $null
