@@ -1,3 +1,10 @@
+Minidriver version [3.12.2](https://github.com/open-eid/minidriver/releases/tag/v3.12.2) release notes
+-----------------------------------
+- Add Edge support
+- minor build and code fixes
+
+[Full Changelog](https://github.com/open-eid/minidriver/compare/v3.12.1...v3.12.2)
+
 Minidriver version [3.12.1](https://github.com/open-eid/minidriver/releases/tag/v3.12.1) release notes
 -----------------------------------
 - Fix ECDSA CMCK tests
