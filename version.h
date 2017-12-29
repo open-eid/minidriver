@@ -17,7 +17,7 @@
 #define MINOR_VERSION 12
 #endif
 #ifndef RELEASE_VERSION
-#define RELEASE_VERSION 1
+#define RELEASE_VERSION 2
 #endif
 #ifndef BUILD_NUMBER
 #define BUILD_NUMBER 0
