@@ -18,6 +18,7 @@
 #define AUTH_CONTAINER_INDEX 0
 #define SIGN_CONTAINER_INDEX 1
 #define RETURN(X) return logreturn(__FUNCTION__, __FILE__, __LINE__, #X, X)
+#define SC(API, ...) SCCall(__FILE__, __LINE__, "SCard"#API, SCard##API, __VA_ARGS__)
 #define _log(...) log(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__)
 #define DECLARE_UNSUPPORTED(name) DWORD WINAPI name { RETURN(SCARD_E_UNSUPPORTED_FEATURE); }
 
@@ -158,6 +159,14 @@ static DWORD logreturn(const char *functionName, const char *fileName, int lineN
 	return result;
 }
 
+template <typename Func, typename... Args>
+LONG SCCall(const char *fileName, int lineNumber, const char *function, Func func, Args... args)
+{
+	LONG err = func(args...);
+	log(function, fileName, lineNumber, "%X", err);
+	return err;
+}
+
 static string toHex(const vector<byte> &data)
 {
 	stringstream os;
@@ -173,10 +182,10 @@ static Result transfer(const vector<byte> &apdu, SCARDHANDLE card)
 	DWORD size = DWORD(data.size());
 
 	DWORD dwProtocol = 0;
-	SCardStatus(card, nullptr, nullptr, nullptr, &dwProtocol, nullptr, nullptr);
+	SC(Status, card, nullptr, nullptr, nullptr, &dwProtocol, nullptr, nullptr);
 
 	_log("> " + toHex(apdu));
-	DWORD ret = SCardTransmit(card, dwProtocol == SCARD_PROTOCOL_T0 ? SCARD_PCI_T0 : SCARD_PCI_T1,
+	DWORD ret = SC(Transmit, card, dwProtocol == SCARD_PROTOCOL_T0 ? SCARD_PCI_T0 : SCARD_PCI_T1,
 		apdu.data(), DWORD(apdu.size()), nullptr, data.data(), &size);
 	if (ret != SCARD_S_SUCCESS)
 		return{ 0, 0, vector<byte>() };
@@ -198,7 +207,14 @@ static map<DRIVER_FEATURES, uint32_t> features(SCARDHANDLE card)
 	map<DRIVER_FEATURES, uint32_t> result;
 	DWORD size = 0;
 	BYTE feature[256];
-	LONG rv = SCardControl(card, SCARD_CTL_CODE(3400), nullptr, 0, feature, DWORD(sizeof(feature)), &size);
+	LONG rv = SC(Control, card, SCARD_CTL_CODE(3400), nullptr, 0, feature, DWORD(sizeof(feature)), &size);
+	if (rv == SCARD_W_RESET_CARD)
+	{
+		rv = SC(Reconnect, card, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, SCARD_LEAVE_CARD, nullptr);
+		if (rv != SCARD_S_SUCCESS)
+			return result;
+		rv = SC(Control, card, SCARD_CTL_CODE(3400), nullptr, 0, feature, DWORD(sizeof(feature)), &size);
+	}
 	if (rv != SCARD_S_SUCCESS)
 		return result;
 	for (BYTE *p = feature; DWORD(p - feature) < size;)
@@ -214,6 +230,8 @@ static map<DRIVER_FEATURES, uint32_t> features(SCARDHANDLE card)
 static Result transferCTL(const vector<byte> &apdu, bool verify, uint32_t lang, short minlen, SCARDHANDLE card)
 {
 	map<DRIVER_FEATURES, uint32_t> f = features(card);
+	if (f.empty())
+		return { 0, 0, vector<byte>() };
 	struct {
 		uint16_t wLcdLayout;
 		uint8_t bEntryValidationCondition;
@@ -222,7 +240,7 @@ static Result transferCTL(const vector<byte> &apdu, bool verify, uint32_t lang, 
 	DWORD size = sizeof(pin_properties);
 	auto ioctl = f.find(FEATURE_IFD_PIN_PROPERTIES);
 	if (ioctl != f.cend())
-		SCardControl(card, ioctl->second, nullptr, 0, &pin_properties, size, &size);
+		SC(Control, card, ioctl->second, nullptr, 0, &pin_properties, size, &size);
 
 #define SET(X) \
 		X->bTimerOut = 30; \
@@ -271,7 +289,7 @@ static Result transferCTL(const vector<byte> &apdu, bool verify, uint32_t lang, 
 	_log("CTL> " + toHex(cmd));
 	vector<byte> data(255 + 3, 0);
 	size = DWORD(data.size());
-	DWORD err = SCardControl(card, ioctl->second, cmd.data(), DWORD(cmd.size()), LPVOID(data.data()), DWORD(data.size()), &size);
+	DWORD err = SC(Control, card, ioctl->second, cmd.data(), DWORD(cmd.size()), LPVOID(data.data()), DWORD(data.size()), &size);
 	if (err != SCARD_S_SUCCESS)
 		return { 0, 0, vector<byte>() };
 
@@ -279,7 +297,7 @@ static Result transferCTL(const vector<byte> &apdu, bool verify, uint32_t lang, 
 	if (ioctl != f.cend())
 	{
 		size = DWORD(data.size());
-		err = SCardControl(card, ioctl->second, nullptr, 0, LPVOID(data.data()), DWORD(data.size()), &size);
+		err = SC(Control, card, ioctl->second, nullptr, 0, LPVOID(data.data()), DWORD(data.size()), &size);
 		if (err != SCARD_S_SUCCESS)
 			return{ 0, 0, vector<byte>() };
 	}
