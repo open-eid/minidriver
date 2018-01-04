@@ -495,7 +495,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 	return TRUE;
 }
 
-DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
+DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags)
 {
 	if (!pCardData)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -880,7 +880,7 @@ DWORD WINAPI CardSetProperty(__in PCARD_DATA pCardData, __in LPCWSTR wszProperty
 }
 
 
-DWORD WINAPI CardQueryCapabilities(__in PCARD_DATA pCardData, __in PCARD_CAPABILITIES pCardCapabilities)
+DWORD WINAPI CardQueryCapabilities(__in PCARD_DATA pCardData, __inout PCARD_CAPABILITIES pCardCapabilities)
 {
 	if (!pCardData || !pCardCapabilities)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -894,7 +894,7 @@ DWORD WINAPI CardQueryCapabilities(__in PCARD_DATA pCardData, __in PCARD_CAPABIL
 	RETURN(NO_ERROR);
 }
 
-DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContainerIndex, __in DWORD dwFlags, __in PCONTAINER_INFO pContainerInfo)
+DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContainerIndex, __in DWORD dwFlags, __inout PCONTAINER_INFO pContainerInfo)
 {
 	if (!pCardData || !pContainerInfo || dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -942,8 +942,8 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData, __in LPWSTR pwszUser
 	return CardAuthenticateEx(pCardData, AUTH_PIN_ID, CARD_PIN_SILENT_CONTEXT, pbPin, cbPin, nullptr, nullptr, pcAttemptsRemaining);
 }
 
-DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __in DWORD dwFlags, __in PBYTE pbPinData, __in DWORD cbPinData,
-	__deref_out_bcount_opt(*pcbSessionPin) PBYTE *ppbSessionPin, __out_opt PDWORD pcbSessionPin, __out_opt PDWORD pcAttemptsRemaining)
+DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __in DWORD dwFlags, __in_bcount(cbPinData) PBYTE pbPinData, __in DWORD cbPinData,
+	__deref_opt_out_bcount(*pcbSessionPin) PBYTE *ppbSessionPin, __out_opt PDWORD pcbSessionPin, __out_opt PDWORD pcAttemptsRemaining)
 {
 	_log("PinId=%u, dwFlags=0x%08X, cbPinData=%u, Attempts %s", PinId, dwFlags, cbPinData, pcAttemptsRemaining ? "YES" : "NO");
 	if (!pCardData || (PinId != AUTH_PIN_ID && PinId != SIGN_PIN_ID))
@@ -1058,7 +1058,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData, __in PIN_ID PinId, __
 	RETURN(NO_ERROR);
 }
 
-DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName, __out_ecount(*pdwcbFileName)LPSTR *pmszFileNames, __out LPDWORD pdwcbFileName, __in DWORD dwFlags)
+DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData, __in_opt LPSTR pszDirectoryName, __deref_out_ecount(*pdwcbFileName) LPSTR *pmszFileNames, __out LPDWORD pdwcbFileName, __in DWORD dwFlags)
 {
 	if (!pCardData || !pmszFileNames || !pdwcbFileName || dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1085,7 +1085,7 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryNam
 	RETURN(SCARD_E_DIR_NOT_FOUND);
 }
 
-DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName, __in LPSTR pszFileName, __in PCARD_FILE_INFO pCardFileInfo)
+DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData, __in_opt LPSTR pszDirectoryName, __in LPSTR pszFileName, __inout PCARD_FILE_INFO pCardFileInfo)
 {
 	_log("pszDirectoryName='%s', pszFileName='%s'", pszDirectoryName, pszFileName);
 	if (!pCardData || !pszFileName || !strlen(pszFileName) || !pCardFileInfo)
@@ -1127,7 +1127,7 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryN
 	RETURN(SCARD_E_DIR_NOT_FOUND);
 }
 
-DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName, __in LPSTR pszFileName, __in DWORD dwFlags, __deref_out_bcount(*pcbData)PBYTE *ppbData, __out PDWORD pcbData)
+DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in_opt LPSTR pszDirectoryName, __in LPSTR pszFileName, __in DWORD dwFlags, __deref_out_bcount_opt(*pcbData) PBYTE *ppbData, __out PDWORD pcbData)
 {
 	_log("pszDirectoryName=%s, pszFileName=%s, dwFlags=0x%08X", pszDirectoryName, pszFileName, dwFlags);
 	if (!pCardData || !pszFileName || !strlen(pszFileName) || !ppbData || !pcbData || dwFlags)
@@ -1198,7 +1198,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData, __in LPSTR pszDirectoryName
 	RETURN(SCARD_E_FILE_NOT_FOUND);
 }
 
-DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags, __in PCARD_FREE_SPACE_INFO pCardFreeSpaceInfo)
+DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags, __inout PCARD_FREE_SPACE_INFO pCardFreeSpaceInfo)
 {
 	if (!pCardData || !pCardFreeSpaceInfo || dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1211,7 +1211,7 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags, _
 	RETURN(NO_ERROR);
 }
 
-DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData, __in DWORD dwKeySpec, __in DWORD dwFlags, __in PCARD_KEY_SIZES pKeySizes)
+DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData, __in DWORD dwKeySpec, __in DWORD dwFlags, __inout PCARD_KEY_SIZES pKeySizes)
 {
 	if (!pCardData || !pKeySizes || dwFlags)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1301,7 +1301,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData, __inout PCARD_RSA_DECRYPT
 	RETURN(NO_ERROR);
 }
 
-DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pInfo)
+DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO pInfo)
 {
 	if (!pCardData || !pInfo || !pInfo->pbData)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1403,7 +1403,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 	RETURN(NO_ERROR);
 }
 
-DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData, __in PCARD_DH_AGREEMENT_INFO pAgreementInfo)
+DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData, __inout PCARD_DH_AGREEMENT_INFO pAgreementInfo)
 {
 	if (!pCardData || !pAgreementInfo || !pAgreementInfo->pbPublicKey)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1438,7 +1438,7 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData, __in PCARD_DH_A
 	RETURN(NO_ERROR);
 }
 
-DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, __in PCARD_DERIVE_KEY pAgreementInfo)
+DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, __inout PCARD_DERIVE_KEY pAgreementInfo)
 {
 	if (!pCardData || !pAgreementInfo || !pAgreementInfo->pwszKDF)
 		RETURN(SCARD_E_INVALID_PARAMETER);
@@ -1477,7 +1477,9 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData, __in PCARD_DERIVE_KEY pAgr
 		case KDF_PARTYVINFO: partyVInfo.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
 		case KDF_SUPPPUBINFO: suppPubInfo.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
 		case KDF_SUPPPRIVINFO: suppPrivInfo.assign(PBYTE(info->pvBuffer), PBYTE(info->pvBuffer) + info->cbBuffer); break;
+#if (NTDDI_VERSION >= NTDDI_WIN8)
 		case KDF_KEYBITLENGTH: keyBitLen = *PULONG(info->pvBuffer); break;
+#endif
 		default: RETURN(SCARD_E_INVALID_PARAMETER);
 		}
 	}
@@ -1631,18 +1633,18 @@ DECLARE_UNSUPPORTED(CardCreateDirectory(__in PCARD_DATA pCardData,
 DECLARE_UNSUPPORTED(CardDeleteDirectory(__in PCARD_DATA pCardData,
 	__in LPSTR pszDirectoryName))
 DECLARE_UNSUPPORTED(CardCreateFile(__in PCARD_DATA pCardData,
-	__in LPSTR pszDirectoryName,
+	__in_opt LPSTR pszDirectoryName,
 	__in LPSTR pszFileName,
 	__in DWORD cbInitialCreationSize,
 	__in CARD_FILE_ACCESS_CONDITION AccessCondition))
 DECLARE_UNSUPPORTED(CardWriteFile(__in PCARD_DATA pCardData,
-	__in LPSTR pszDirectoryName,
+	__in_opt LPSTR pszDirectoryName,
 	__in LPSTR pszFileName,
 	__in DWORD dwFlags,
 	__in_bcount(cbData) PBYTE pbData,
 	__in DWORD cbData))
 DECLARE_UNSUPPORTED(CardDeleteFile(__in PCARD_DATA pCardData,
-	__in LPSTR pszDirectoryName,
+	__in_opt LPSTR pszDirectoryName,
 	__in LPSTR pszFileName,
 	__in DWORD dwFlags))
 DECLARE_UNSUPPORTED(CspGetDHAgreement(__in PCARD_DATA pCardData,
