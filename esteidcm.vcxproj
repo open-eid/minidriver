@@ -145,6 +145,9 @@
   <ItemGroup>
     <ResourceCompile Include="esteidcm.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="esteidcm.inf" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
