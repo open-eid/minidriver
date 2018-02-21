@@ -447,7 +447,7 @@ DWORD WINAPI CreateProgressBar(LPVOID lpParam)
 		switch (externalInfo->pinId)
 		{
 		case AUTH_PIN_ID:
-			config.pszContent = L"Palun sisestage autoriseerimise PIN (PIN1)";
+			config.pszContent = L"Palun sisestage isikutuvastuse PIN (PIN1)";
 			config.pszExpandedInformation = L"Valitud tegevuse jaoks on vaja kasutada isikutuvastuse sertifikaati. Sertifikaadi kasutamiseks sisesta PIN1 kaardilugeja sõrmistikult.";
 			break;
 		case SIGN_PIN_ID:
