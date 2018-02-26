@@ -15,6 +15,7 @@
       "A newer version of [ProductName] is already installed. If you are trying to downgrade, please uninstall the newer version first."/>
     <UIRef Id="WixUI_Minimal"/>
 
+    <Property Id="INSTALL_DRIVER" Value="1"/>
     <Property Id="SCPNPENTRY">
       <RegistrySearch Id="ScPnP" Root="HKLM" Key="SOFTWARE\Policies\Microsoft\Windows\ScPnP" Name="EnableScPnP" Type="raw"/>
     </Property>
@@ -88,14 +89,11 @@
         <Custom Action="EnableScSrv" Before="StartServices">NOT Installed</Custom>
     </InstallExecuteSequence>
 
-    <?if $(var.Platform) = "x64" ?>
-    <!-- Force install on X64 Windows. "on demand" install smartcard driver does not work on Terminals. X32 has side effects with WIX burn -->
     <CustomAction Id="InstallMinidriver" Directory="APPLICATIONFOLDER" Execute="deferred" Impersonate="no" HideTarget="yes" Return="ignore"
         ExeCommand="rundll32 syssetup,SetupInfObjectInstallAction DefaultInstall 128 [APPLICATIONFOLDER]\\esteidcm.inf" />
     <InstallExecuteSequence>
-        <Custom Action="InstallMinidriver" After="InstallFiles">NOT Installed</Custom>
+        <Custom Action="InstallMinidriver" After="InstallFiles">NOT Installed AND INSTALL_DRIVER = 1</Custom>
     </InstallExecuteSequence>
-    <?endif ?>
 
     <Feature Id="minidriver" Title="Estonian Minidriver">
       <ComponentRef Id="miniDriverPreW10"/>
