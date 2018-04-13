@@ -26,7 +26,7 @@ DriverVer=12/29/2017,3.12.2.0
 CopyFiles=atrfiltr_copyfiles.ntamd64
 CopyFiles=System32_CopyFiles.ntamd64
 CopyFiles=Syswow64_CopyFiles.ntamd64
-AddReg=atrfiltr_addreg
+AddReg=atrfiltr_AddReg
 AddReg=AddRegDefault
 AddReg=AddRegWOW64
 
@@ -35,18 +35,41 @@ AddReg=AddRegWOW64
 ;Needs=UmPass
 CopyFiles=atrfiltr_copyfiles.ntx86
 CopyFiles=System32_CopyFiles.ntx86
-AddReg=atrfiltr_addreg
+AddReg=atrfiltr_AddReg
 AddReg=AddRegDefault
 
 [DefaultInstall.ntx86.Services]
 Include=umpass.inf
 Needs=UmPass.Services
-AddService = atrfiltr, , ATRFfiltrService_Install
+AddService = atrfiltr,,ATRFfiltr.Service
 
 [DefaultInstall.ntamd64.Services]
 Include=umpass.inf
 Needs=UmPass.Services
-AddService = atrfiltr, , ATRFfiltrService_Install
+AddService = atrfiltr,,ATRFfiltr.Service
+
+[DefaultUninstall.ntamd64]
+DelFiles=atrfiltr_copyfiles.ntamd64
+DelFiles=System32_CopyFiles.ntamd64
+DelFiles=Syswow64_CopyFiles.ntamd64
+DelReg=DelRegDefault
+DelReg=DelRegWOW64
+DelReg=atrfiltr_DelReg
+DelReg=cleanup_DelRegDefault
+DelReg=cleanup_DelRegWOW64
+
+[DefaultUninstall.ntx86]
+DelFiles=atrfiltr_copyfiles.ntx86
+DelFiles=System32_CopyFiles.ntx86
+DelReg=DelRegDefault
+DelReg=atrfiltr_DelReg
+DelReg=cleanup_DelRegDefault
+
+[DefaultUninstall.ntamd64.Services]
+DelService=atrfiltr,0x200 ; SPSVCINST_STOPSERVICE
+
+[DefaultUninstall.ntx86.Services]
+DelService=atrfiltr,0x200 ; SPSVCINST_STOPSERVICE
 
 [SourceDisksNames]
 1 = %MediaDescription%
@@ -74,12 +97,12 @@ esteidcm.dll,esteidcm_64.dll
 esteidcm.dll,esteidcm_32.dll
 
 [atrfiltr_copyfiles.ntx86]
-atrfiltr.sys,atrfiltr_32.sys,,0x00000010
+atrfiltr.sys,atrfiltr_32.sys,,0x00000010 ; COPYFLG_NO_OVERWRITE
 
 [atrfiltr_copyfiles.ntamd64]
-atrfiltr.sys,atrfiltr_64.sys,,0x00000010
+atrfiltr.sys,atrfiltr_64.sys,,0x00000010 ; COPYFLG_NO_OVERWRITE
 
-[ATRFfiltrService_Install]
+[ATRFfiltr.Service]
 DisplayName   = %atrfiltr_ServiceDesc%
 ServiceType   = 1   ; SERVICE_KERNEL_DRIVER
 StartType     = 3   ; SERVICE_DEMAND_START
@@ -168,8 +191,25 @@ HKLM, %SmartCardName5_WOW64%,"Smart Card Key Storage Provider",0x00000000,"Micro
 HKLM, %SmartCardName5_WOW64%,"80000100",0x00000000,%PIN1Prompt%
 HKLM, %SmartCardName5_WOW64%,"80000101",0x00000000,%PIN2Prompt%
 
-[atrfiltr_addreg]
-HKLM,SYSTEM\CurrentControlSet\Control\Class\{50DD5230-BA8A-11D1-BF5D-0000F805F530}, "UpperFilters", 0x00010008, "atrfiltr" 
+[DelRegDefault]
+HKLM, %SmartCardName1%
+HKLM, %SmartCardName2%
+HKLM, %SmartCardName3%
+HKLM, %SmartCardName4%
+HKLM, %SmartCardName5%
+
+[DelRegWOW64]
+HKLM, %SmartCardName1_WOW64%
+HKLM, %SmartCardName2_WOW64%
+HKLM, %SmartCardName3_WOW64%
+HKLM, %SmartCardName4_WOW64%
+HKLM, %SmartCardName5_WOW64%
+
+[atrfiltr_AddReg]
+HKLM,SYSTEM\CurrentControlSet\Control\Class\{50DD5230-BA8A-11D1-BF5D-0000F805F530}, "UpperFilters", 0x00010008, "atrfiltr" ; FLG_ADDREG_APPEND | FLG_ADDREG_TYPE_MULTI_SZ
+
+[atrfiltr_DelReg]
+HKLM,SYSTEM\CurrentControlSet\Control\Class\{50DD5230-BA8A-11D1-BF5D-0000F805F530}, "UpperFilters", 0x00018002, "atrfiltr" ; FLG_DELREG_MULTI_SZ_DELSTRING
 
 ; =================== Generic ==================================
 
