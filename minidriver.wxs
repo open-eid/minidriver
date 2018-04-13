@@ -60,7 +60,6 @@
             <Condition><![CDATA[(NOT USER32VERSION)]]></Condition>
             <File Id="esteidcmINFPreW10" Source="minidriver\PreW10\esteidcm.inf" KeyPath="yes"/>
             <File Id="esteidcmCATPreW10" Source="minidriver\PreW10\esteidcm.cat" />
-            <File Id="esteidcm64CATPreW10" Source="minidriver\PreW10\esteidcm64.cat" />
             <File Id="esteidcm64DLLPreW10" Source="minidriver\PreW10\esteidcm_64.dll" />
             <File Id="atrfiltr64DLLPreW10" Source="minidriver\PreW10\atrfiltr_64.sys" />
             <File Id="esteidcm86DLLPreW10" Source="minidriver\PreW10\esteidcm_32.dll" />
@@ -71,7 +70,6 @@
             <Condition><![CDATA[(USER32VERSION)]]></Condition>
             <File Id="esteidcmINFW10" Source="minidriver\W10\esteidcm.inf" KeyPath="yes"/>
             <File Id="esteidcmCATW10" Source="minidriver\W10\esteidcm.cat" />
-            <File Id="esteidcm64CATW10" Source="minidriver\W10\esteidcm64.cat" />
             <File Id="esteidcm64DLLW10" Source="minidriver\W10\esteidcm_64.dll" />
             <File Id="atrfiltr64DLLW10" Source="minidriver\W10\atrfiltr_64.sys" />
             <File Id="esteidcm86DLLW10" Source="minidriver\W10\esteidcm_32.dll" />
@@ -90,9 +88,12 @@
     </InstallExecuteSequence>
 
     <CustomAction Id="InstallMinidriver" Directory="APPLICATIONFOLDER" Execute="deferred" Impersonate="no" HideTarget="yes" Return="ignore"
-        ExeCommand="rundll32 syssetup,SetupInfObjectInstallAction DefaultInstall 128 [APPLICATIONFOLDER]\\esteidcm.inf" />
+        ExeCommand="rundll32 syssetup,SetupInfObjectInstallAction DefaultInstall 132 [APPLICATIONFOLDER]\\esteidcm.inf" />
+    <CustomAction Id="UninstallMinidriver" Directory="APPLICATIONFOLDER" Execute="deferred" Impersonate="no" HideTarget="yes" Return="ignore"
+        ExeCommand="rundll32 syssetup,SetupInfObjectInstallAction DefaultUninstall 132 [APPLICATIONFOLDER]\\esteidcm.inf" />
     <InstallExecuteSequence>
         <Custom Action="InstallMinidriver" After="InstallFiles">NOT Installed AND INSTALL_DRIVER = 1</Custom>
+        <Custom Action="UninstallMinidriver" After="InstallInitialize">REMOVE="ALL" AND INSTALL_DRIVER = 1</Custom>
     </InstallExecuteSequence>
 
     <Feature Id="minidriver" Title="Estonian Minidriver">
