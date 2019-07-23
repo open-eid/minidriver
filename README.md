@@ -15,6 +15,8 @@
 
 ## Building
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/open-eid/minidriver?branch=master&svg=true)](https://ci.appveyor.com/project/open-eid/minidriver)
+[![LGTM alerts](https://img.shields.io/lgtm/alerts/g/open-eid/minidriver.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/open-eid/minidriver/alerts/)
+
 
 * Execute [buildcab.ps1](buildcab.ps1)
 
