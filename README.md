@@ -2,6 +2,9 @@
 
 ![European Regional Development Fund](https://github.com/open-eid/DigiDoc4-Client/blob/master/client/images/EL_Regionaalarengu_Fond.png "European Regional Development Fund - DO NOT REMOVE THIS IMAGE BEFORE 05.03.2020")
 
+**NB! Please note that the active development and management of the EstEID Smart Card MiniDriver has ended as all EstEID Smart Cards are expired. More information is available here: https://www.id.ee/en/article/id-card-documentation-2/ <br>
+We won't be accepting pull requests or responding to issues for this project anymore.**
+
  * License: LGPL 2.1 & BSD
  * &copy; Estonian Information System Authority
  * [Architecture of ID-software](http://open-eid.github.io)
